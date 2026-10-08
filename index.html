@@ -60,6 +60,12 @@
   .b-USADO { background: #e6f4ea; color: #137333; }
   .b-ANULADO { background: #fce8e6; color: #c5221f; }
   .b-VENCIDO { background: #fef7e0; color: #b06000; }
+  .b-OK { background: #e6f4ea; color: #137333; }
+  .b-EXCEDIDO { background: #fce8e6; color: #c5221f; }
+  .b-FALTAN { background: #fef7e0; color: #b06000; }
+  .b-SIN_CUPO { background: #e8eaed; color: #3c4043; }
+  tr.clic { cursor: pointer; }
+  tr.clic:hover td { background: #f1f3f4; }
 
   .kpis { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); }
   .kpi { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; }
@@ -180,7 +186,7 @@ if (window.API_URL) { // página publicada fuera de Apps Script: los parámetros
 }
 const LISTA_ESTADOS = ['IMPRESO', 'ENTREGADO', 'USADO', 'ANULADO', 'VENCIDO'];
 
-const APP = { token: null, user: null, config: {}, comedores: [], tipos: [], grupos: [], view: null };
+const APP = { token: null, user: null, config: {}, comedores: [], tipos: [], grupos: [], view: null, prefill: null };
 
 const store = {
   get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
@@ -413,6 +419,7 @@ function imprimirTickets(tickets, cfg = APP.config) {
 /* ===================== Sesión y navegación ===================== */
 const VISTAS = [
   { id: 'inicio', label: 'Inicio', roles: ['ADMIN', 'OPERADOR'] },
+  { id: 'cupos', label: 'Cupos', roles: ['ADMIN', 'OPERADOR'] },
   { id: 'emitir', label: 'Emitir', roles: ['ADMIN', 'OPERADOR'] },
   { id: 'lotes', label: 'Lotes', roles: ['ADMIN', 'OPERADOR'] },
   { id: 'entregar', label: 'Entregar', roles: ['ADMIN', 'OPERADOR'] },
@@ -527,36 +534,49 @@ function kpisHtml(tot) {
 RENDER.inicio = async (main) => {
   const hoy = hoyISO();
   main.innerHTML = `<h2>Hoy · ${fechaLeg(hoy)}</h2><div id="kpisHoy"></div>
-    <div class="card" style="margin-top:16px"><h3>Por tipo de comida</h3><div id="tipoHoy"></div></div>`;
+    <div class="card" style="margin-top:16px"><h3>Por tipo de comida</h3><div id="tipoHoy"></div></div>
+    <div class="card"><h3>Cupos de hoy</h3><div id="cuposHoy" class="muted">…</div></div>`;
   const r = await intentar(api('reporteDashboard', { desde: hoy, hasta: hoy }));
   $('#kpisHoy').innerHTML = kpisHtml(r.totales);
   $('#tipoHoy').innerHTML = tablaHtml(r.porTipo);
+  const c = await intentar(api('estadoCupos', hoy, ''));
+  const fuera = c.filas.filter(f => f.estado === 'EXCEDIDO' || f.estado === 'FALTAN');
+  $('#cuposHoy').innerHTML = c.filas.some(f => f.cupo != null)
+    ? `Pedidas: <b>${c.totales.cupo}</b> · Vigentes: <b>${c.totales.vigentes}</b> (${c.totales.portador} al portador, ${c.totales.nominativos} nominativos)` +
+      (fuera.length ? `<br>Fuera de cupo: ${fuera.map(f => esc(f.nombre) + ' ' + difTxt(f.diferencia)).join(' · ')}` : '<br>Todas las áreas dentro del cupo.') +
+      ` <a href="#" id="irCupos">Ver cupos</a>`
+    : 'No hay cupos cargados para hoy. <a href="#" id="irCupos">Cargar cupos</a>';
+  $('#irCupos').onclick = (e) => { e.preventDefault(); irA('cupos'); };
 };
 
 /* ===================== Emitir ===================== */
 RENDER.emitir = async (main) => {
   const grupos = APP.grupos.filter(activo), tipos = APP.tipos.filter(activo);
+  const pre = APP.prefill || {}; APP.prefill = null; // viene de "Cupos": grupo, fecha, tipo y modalidad precargados
   main.innerHTML = `<div class="card"><h2>Emitir e imprimir vouchers</h2>
     <div class="grid">
-      <div class="field"><label>Grupo</label><select id="emGrupo">${opciones(grupos, 'grupoId', '', 'Elegí un grupo…')}</select></div>
+      <div class="field"><label>Grupo</label><select id="emGrupo">${opciones(grupos, 'grupoId', pre.grupoId || '', 'Elegí un grupo…')}</select></div>
       <div class="field"><label>Tipo de comida</label><select id="emTipo">${tipos.map(t =>
-        `<option value="${esc(t.tipoId)}">${esc(t.nombre)} (${esc(t.horaDesde)}–${esc(t.horaHasta)})</option>`).join('')}</select></div>
-      <div class="field"><label>Fecha desde</label><input id="emDesde" type="date" value="${hoyISO()}"></div>
+        `<option value="${esc(t.tipoId)}" ${t.tipoId === pre.tipoId ? 'selected' : ''}>${esc(t.nombre)} (${esc(t.horaDesde)}–${esc(t.horaHasta)})</option>`).join('')}</select></div>
+      <div class="field"><label>Fecha desde</label><input id="emDesde" type="date" value="${esc(pre.fecha || hoyISO())}"></div>
       <div class="field"><label>Fecha hasta (opcional)</label><input id="emHasta" type="date"></div>
     </div>
     <div id="emInfoGrupo" class="muted"></div>
+    <div id="emModo" class="tabs hidden" style="margin-top:8px"><button type="button" data-m="PORTADOR">Al portador</button><button type="button" data-m="NOMINATIVO">Nominativos</button></div>
     <div id="emPortador" class="hidden"><div class="field" style="max-width:220px"><label>Cantidad por día</label><input id="emCant" type="number" min="1" value="1"></div></div>
     <div id="emNominativo" class="hidden">
       <div class="row"><div class="field"><label>Personas</label><input id="emFiltro" placeholder="Filtrar por nombre o documento"></div>
         <button class="btn sec small" id="emTodos" type="button">Todos</button><button class="btn sec small" id="emNinguno" type="button">Ninguno</button></div>
       <div class="lista-personas" id="emPersonas"></div>
+      <p class="muted" id="emYaTienen"></p>
     </div>
     <div class="field"><label>Observaciones</label><input id="emObs" maxlength="500"></div>
     <div class="row"><div id="emTotal" class="muted" style="flex:1"></div><button class="btn" id="emBtn" type="button">Emitir e imprimir</button></div>
   </div>`;
 
-  let personas = [];
+  let personas = [], modo = pre.modalidad || 'PORTADOR';
   const grupoSel = () => APP.grupos.find(g => g.grupoId === $('#emGrupo').value);
+  const modalidad = () => { const g = grupoSel(); return g ? (g.modalidad === 'MIXTO' ? modo : g.modalidad) : ''; };
   const dias = () => {
     const d = $('#emDesde').value, h = $('#emHasta').value || d;
     if (!d || h < d) return 0;
@@ -564,8 +584,7 @@ RENDER.emitir = async (main) => {
     return n;
   };
   const total = () => {
-    const g = grupoSel(); if (!g) return 0;
-    const porDia = g.modalidad === 'NOMINATIVO' ? $$('#emPersonas input:checked').length : (Number($('#emCant').value) || 0);
+    const porDia = modalidad() === 'NOMINATIVO' ? $$('#emPersonas input:checked').length : modalidad() ? (Number($('#emCant').value) || 0) : 0;
     return porDia * dias();
   };
   const actualizarTotal = () => { $('#emTotal').textContent = `Total a emitir: ${total()} voucher(s) en ${dias()} día(s)`; };
@@ -573,43 +592,192 @@ RENDER.emitir = async (main) => {
     const f = $('#emFiltro').value.toLowerCase();
     $$('#emPersonas label').forEach(l => l.classList.toggle('hidden', f && l.textContent.toLowerCase().indexOf(f) < 0));
   };
+  // Marca a quienes ya tienen voucher ese día y tipo para no nominarlos dos veces (solo si es un único día).
+  const marcarYaTienen = async () => {
+    const g = grupoSel();
+    $('#emYaTienen').textContent = '';
+    if (!g || modalidad() !== 'NOMINATIVO' || !personas.length || dias() !== 1) return;
+    const d = await intentar(api('vouchersDelDia', $('#emDesde').value, g.grupoId, $('#emTipo').value));
+    const ya = new Set(d.personasConVoucher);
+    $$('#emPersonas label').forEach(l => {
+      const c = $('input', l), tiene = ya.has(c.value);
+      c.checked = !tiene;
+      $('.ya', l).textContent = tiene ? ' · ya tiene voucher' : '';
+    });
+    $('#emYaTienen').textContent = ya.size ? `${ya.size} persona(s) ya tienen ${nomTipo($('#emTipo').value)} ese día: quedan destildadas.` : '';
+    actualizarTotal();
+  };
+  const mostrarModo = async () => {
+    const g = grupoSel(), m = modalidad();
+    $('#emModo').classList.toggle('hidden', !g || g.modalidad !== 'MIXTO');
+    $$('#emModo button').forEach(b => b.classList.toggle('active', b.dataset.m === m));
+    $('#emPortador').classList.toggle('hidden', m !== 'PORTADOR');
+    $('#emNominativo').classList.toggle('hidden', m !== 'NOMINATIVO');
+    if (m === 'NOMINATIVO') await marcarYaTienen();
+    actualizarTotal();
+  };
 
   $('#emGrupo').onchange = async () => {
     const g = grupoSel();
-    $('#emPortador').classList.add('hidden'); $('#emNominativo').classList.add('hidden');
-    if (!g) { $('#emInfoGrupo').textContent = ''; actualizarTotal(); return; }
-    $('#emInfoGrupo').textContent = `${g.modalidad === 'NOMINATIVO' ? 'Nominativo' : 'Al portador'} · Válido en: ${String(g.comedoresIds).split(',').map(nomComedor).join(', ')}`;
-    if (g.modalidad === 'NOMINATIVO') {
+    personas = [];
+    if (!g) { $('#emInfoGrupo').textContent = ''; return mostrarModo(); }
+    const nomMod = { NOMINATIVO: 'Nominativo', PORTADOR: 'Al portador', MIXTO: 'Mixto (al portador + nominativos)' }[g.modalidad] || g.modalidad;
+    $('#emInfoGrupo').textContent = `${nomMod} · Válido en: ${String(g.comedoresIds).split(',').map(nomComedor).join(', ')}`;
+    if (g.modalidad !== 'PORTADOR') {
       personas = (await intentar(api('listarCatalogo', 'personas', { grupoId: g.grupoId }))).filter(activo);
       $('#emPersonas').innerHTML = personas.length ? personas.map(p =>
-        `<label><input type="checkbox" value="${esc(p.personaId)}" checked> ${esc(p.nombre)} <span class="muted">${esc(p.documento)}</span></label>`).join('')
+        `<label><input type="checkbox" value="${esc(p.personaId)}" checked> ${esc(p.nombre)} <span class="muted">${esc(p.documento)}<span class="ya"></span></span></label>`).join('')
         : '<p class="muted">El grupo no tiene personas activas. Cargalas en Catálogos.</p>';
-      $('#emNominativo').classList.remove('hidden');
-    } else {
-      $('#emPortador').classList.remove('hidden');
     }
-    actualizarTotal();
+    await mostrarModo();
   };
-  ['emDesde', 'emHasta', 'emCant'].forEach(id => $('#' + id).oninput = actualizarTotal);
+  $$('#emModo button').forEach(b => b.onclick = () => { modo = b.dataset.m; mostrarModo(); });
+  ['emDesde', 'emHasta'].forEach(id => $('#' + id).oninput = () => { actualizarTotal(); if (modalidad() === 'NOMINATIVO') marcarYaTienen(); });
+  $('#emTipo').onchange = () => { if (modalidad() === 'NOMINATIVO') marcarYaTienen(); };
+  $('#emCant').oninput = actualizarTotal;
   $('#emPersonas').onchange = actualizarTotal;
   $('#emFiltro').oninput = pintarPersonas;
   $('#emTodos').onclick = () => { $$('#emPersonas label:not(.hidden) input').forEach(c => c.checked = true); actualizarTotal(); };
   $('#emNinguno').onclick = () => { $$('#emPersonas label:not(.hidden) input').forEach(c => c.checked = false); actualizarTotal(); };
-  actualizarTotal();
+  if (pre.grupoId) await $('#emGrupo').onchange(); else actualizarTotal();
 
   $('#emBtn').onclick = async () => {
     const g = grupoSel();
     if (!g) return toast('Elegí un grupo.', true);
     const n = total();
     if (!n) return toast('No hay vouchers para emitir.', true);
-    if (!await confirmar('Emitir vouchers', `Se van a emitir e imprimir ${n} voucher(s) de ${nomTipo($('#emTipo').value)} para ${g.nombre}. ¿Continuar?`, 'Emitir e imprimir')) return;
-    const r = await intentar(api('emitirLote', {
-      grupoId: g.grupoId, tipoId: $('#emTipo').value, fechaDesde: $('#emDesde').value, fechaHasta: $('#emHasta').value,
+    if (!await confirmar('Emitir vouchers', `Se van a emitir e imprimir ${n} voucher(s) ${modalidad() === 'NOMINATIVO' ? 'nominativos' : 'al portador'} de ${nomTipo($('#emTipo').value)} para ${g.nombre}. ¿Continuar?`, 'Emitir e imprimir')) return;
+    const datos = {
+      grupoId: g.grupoId, tipoId: $('#emTipo').value, fechaDesde: $('#emDesde').value, fechaHasta: $('#emHasta').value, modalidad: modalidad(),
       cantidad: $('#emCant').value, personaIds: $$('#emPersonas input:checked').map(c => c.value), observaciones: $('#emObs').value
-    }));
+    };
+    let r = await intentar(api('emitirLote', datos));
+    if (r.requiereConfirmacion) {
+      const m = await modal('Supera el cupo del área', `<p>Esta emisión pasa el cupo pedido más la tolerancia:</p><ul>${r.avisos.map(a => `<li>${esc(a)}</li>`).join('')}</ul>
+        <p class="muted">Si seguís, el lote queda marcado "[Excede cupo]". También podés anular vouchers al portador que sobren desde Cupos.</p>`,
+        [{ id: 'no', label: 'Cancelar', cls: 'sec' }, { id: 'si', label: 'Emitir igual', cls: 'danger' }]);
+      if (m.boton !== 'si') return;
+      r = await intentar(api('emitirLote', Object.assign(datos, { confirmarExceso: true })));
+    }
     toast(`Lote ${r.loteId} emitido (${r.cantidad} vouchers).`);
     imprimirTickets(r.tickets);
+    if (modalidad() === 'NOMINATIVO') marcarYaTienen();
   };
+};
+
+/* ===================== Cupos del día ===================== */
+const NOMBRE_ESTADO_CUPO = { OK: 'En cupo', EXCEDIDO: 'Excedido', FALTAN: 'Faltan', SIN_CUPO: 'Sin cupo' };
+const badgeCupo = e => `<span class="badge b-${esc(e)}">${esc(NOMBRE_ESTADO_CUPO[e] || e)}</span>`;
+const difTxt = d => d == null ? '—' : (d > 0 ? '+' : '') + d;
+
+RENDER.cupos = async (main) => {
+  const tipos = APP.tipos.filter(activo);
+  const st = { fecha: store.get('vt_cupoFecha') || hoyISO(), tipoId: store.get('vt_cupoTipo') || (tipos[1] || tipos[0] || {}).tipoId || '' };
+  if (st.fecha < hoyISO()) st.fecha = hoyISO();
+  main.innerHTML = `<div class="card"><div class="row" style="justify-content:space-between;align-items:center"><h2>Cupos por área</h2>
+      <button class="btn" id="cuPegar" type="button">Pegar planilla de cupos</button></div>
+    <div class="row">
+      <div class="field"><label>Fecha</label><input id="cuFecha" type="date" value="${esc(st.fecha)}"></div>
+      <div class="field"><label>Tipo de comida</label><select id="cuTipo">${opciones(tipos, 'tipoId', st.tipoId, 'Todos')}</select></div>
+      <div class="field" style="flex:0"><button class="btn sec" id="cuVer" type="button">Actualizar</button></div>
+    </div><div id="cuTabla"></div></div><div id="cuDetalle"></div>`;
+
+  const cargar = async () => {
+    st.fecha = $('#cuFecha').value; st.tipoId = $('#cuTipo').value;
+    store.set('vt_cupoFecha', st.fecha); store.set('vt_cupoTipo', st.tipoId);
+    $('#cuDetalle').innerHTML = '';
+    if (!st.fecha) return;
+    const r = await intentar(api('estadoCupos', st.fecha, st.tipoId));
+    const t = r.totales;
+    $('#cuTabla').innerHTML = r.filas.length ? `<p class="muted">Tolerancia: ±${r.tolerancia} personas. Tocá un área para ver, imprimir o entregar sus vouchers.</p>
+      <div class="table-wrap"><table><thead><tr><th>Área</th><th class="num">Cupo</th><th class="num">Al portador</th><th class="num">Nominativos</th>
+        <th class="num">Vigentes</th><th class="num">Entregados</th><th class="num">Usados</th><th class="num">Dif.</th><th>Estado</th></tr></thead><tbody>
+      ${r.filas.map(f => `<tr class="clic" data-g="${esc(f.grupoId)}"><td>${esc(f.nombre)}</td><td class="num">${f.cupo == null ? '—' : f.cupo}</td>
+        <td class="num">${f.portador}</td><td class="num">${f.nominativos}</td><td class="num"><b>${f.vigentes}</b></td><td class="num">${f.entregados}</td>
+        <td class="num">${f.usados}</td><td class="num">${difTxt(f.diferencia)}</td><td>${badgeCupo(f.estado)}</td></tr>`).join('')}
+      <tr><td><b>TOTAL</b></td><td class="num"><b>${t.cupo}</b></td><td class="num">${t.portador}</td><td class="num">${t.nominativos}</td>
+        <td class="num"><b>${t.vigentes}</b></td><td class="num">${t.entregados}</td><td class="num">${t.usados}</td><td class="num">${difTxt(t.vigentes - t.cupo)}</td><td></td></tr>
+      </tbody></table></div>` : '<p class="muted">No hay cupos cargados ni vouchers emitidos para ese día. Usá "Pegar planilla de cupos".</p>';
+    $$('#cuTabla [data-g]').forEach(tr => tr.onclick = () => verArea(tr.dataset.g));
+  };
+
+  const verArea = async (grupoId) => {
+    const g = APP.grupos.find(x => x.grupoId === grupoId) || { grupoId, nombre: grupoId, modalidad: '' };
+    const d = await intentar(api('vouchersDelDia', st.fecha, grupoId, st.tipoId));
+    const cont = $('#cuDetalle');
+    const puedeEntregar = APP.user.entregaManual;
+    const btnEmitir = (m, l) => `<button class="btn sec" data-emitir="${m}" type="button">${l}</button>`;
+    cont.innerHTML = `<div class="card"><h2>${esc(g.nombre)} · ${esc(fechaLeg(st.fecha))}${st.tipoId ? ' · ' + esc(nomTipo(st.tipoId)) : ''}</h2>
+      <div class="row" style="margin-bottom:10px">
+        ${g.modalidad !== 'PORTADOR' && st.tipoId ? btnEmitir('NOMINATIVO', '+ Nominativos') : ''}
+        ${g.modalidad !== 'NOMINATIVO' && st.tipoId ? btnEmitir('PORTADOR', '+ Al portador') : ''}
+        <button class="btn" id="cdImprimir" type="button">Imprimir seleccionados</button>
+        ${puedeEntregar ? '<button class="btn" id="cdEntregar" type="button">Marcar entregados</button>' : ''}
+        <button class="btn danger" id="cdAnular" type="button">Anular</button>
+      </div>
+      <div class="row" style="margin-bottom:8px"><button class="btn sec small" id="cdSelNom" type="button">Elegir nominativos sin entregar</button>
+        <button class="btn sec small" id="cdSelPor" type="button">Elegir al portador sin entregar</button></div>
+      ${d.vouchers.length ? `<div class="table-wrap"><table><thead><tr><th><input type="checkbox" id="cdTodos"></th><th>Código</th><th>Persona</th>${st.tipoId ? '' : '<th>Tipo</th>'}<th>Estado</th><th>Detalle</th></tr></thead><tbody>
+      ${d.vouchers.map(v => `<tr><td><input type="checkbox" class="cdSel" value="${esc(v.voucherId)}" data-nom="${v.personaId ? 1 : 0}" data-estado="${esc(v.estado)}"></td>
+        <td>${esc(v.codigo)}</td><td>${v.personaNombre ? esc(v.personaNombre) : '<span class="muted">Al portador</span>'}</td>${st.tipoId ? '' : `<td>${esc(nomTipo(v.tipoId))}</td>`}
+        <td>${badge(v.estado)}</td><td class="muted">${v.entregadoA ? 'Recibió: ' + esc(v.entregadoA) : ''}${v.usadoEn ? ' · Usado ' + esc(fechaLeg(v.usadoEn)) + ' en ' + esc(nomComedor(v.comedorUso)) : ''}${Number(v.reimpresiones) ? ' · Reimpreso ' + esc(v.reimpresiones) + 'x' : ''}</td></tr>`).join('')}
+      </tbody></table></div>` : '<p class="muted">Todavía no hay vouchers emitidos para esta área.</p>'}</div>`;
+    cont.scrollIntoView({ behavior: 'smooth' });
+
+    const sel = () => $$('.cdSel:checked').map(c => c.value);
+    const elegir = (nom) => $$('.cdSel').forEach(c => c.checked = c.dataset.nom === nom && c.dataset.estado === 'IMPRESO');
+    const recargar = async () => { await cargar(); await verArea(grupoId); };
+    if ($('#cdTodos')) $('#cdTodos').onchange = (e) => $$('.cdSel').forEach(c => c.checked = e.target.checked);
+    $('#cdSelNom').onclick = () => elegir('1');
+    $('#cdSelPor').onclick = () => elegir('0');
+    $$('[data-emitir]', cont).forEach(b => b.onclick = () => {
+      APP.prefill = { grupoId, fecha: st.fecha, tipoId: st.tipoId, modalidad: b.dataset.emitir };
+      irA('emitir');
+    });
+    $('#cdImprimir').onclick = async () => {
+      if (!sel().length) return toast('Elegí los vouchers a imprimir.', true);
+      imprimirTickets(await intentar(api('reimprimir', { codigos: sel() })));
+      recargar();
+    };
+    if ($('#cdEntregar')) $('#cdEntregar').onclick = async () => {
+      if (!sel().length) return toast('Elegí los vouchers a marcar como entregados.', true);
+      const r = await modal('Marcar entregados', `<p>${sel().length} voucher(s) seleccionados.</p>
+        <div class="field"><label>Recibe (persona o responsable)</label><input name="recibe" value="${esc(g.responsable || '')}"></div>`,
+        [{ id: 'no', label: 'Cancelar', cls: 'sec' }, { id: 'si', label: 'Registrar entrega' }]);
+      if (r.boton !== 'si') return;
+      const res = await intentar(api('entregarVouchers', sel(), r.datos.recibe));
+      toast(`Entregados: ${res.entregados}` + (res.errores.length ? ` · ${res.errores.length} no aplicables` : ''));
+      recargar();
+    };
+    $('#cdAnular').onclick = async () => {
+      if (!sel().length) return toast('Elegí los vouchers a anular.', true);
+      const motivo = await pedirTexto('Anular vouchers', `Motivo de anulación (${sel().length} seleccionados)`, 'Anular', 'danger');
+      if (motivo === null) return;
+      const res = await intentar(api('anularVouchers', sel(), motivo));
+      toast(`Anulados: ${res.anulados}` + (res.errores.length ? ` · ${res.errores.length} no aplicables` : ''));
+      recargar();
+    };
+  };
+
+  $('#cuVer').onclick = cargar;
+  $('#cuFecha').onchange = cargar;
+  $('#cuTipo').onchange = cargar;
+  $('#cuPegar').onclick = async () => {
+    const r = await modal('Pegar planilla de cupos', `<p class="muted">Copiá de la planilla las columnas <b>Área</b> y <b>Cantidad</b> y pegalas acá.
+      Si copiás también el encabezado con un tipo de comida por columna (ej. Área | Desayuno | Almuerzo), se carga cada tipo.
+      Volver a pegar un área la actualiza.</p>
+      <div class="grid"><div class="field"><label>Fecha desde</label><input name="desde" type="date" value="${esc(st.fecha)}"></div>
+        <div class="field"><label>Fecha hasta (opcional)</label><input name="hasta" type="date"></div>
+        <div class="field"><label>Tipo de comida</label><select name="tipo">${opciones(tipos, 'tipoId', st.tipoId)}</select></div></div>
+      <div class="field"><label>Filas</label><textarea name="texto" rows="10" placeholder="Mantenimiento&#9;12&#10;Administración&#9;8"></textarea></div>`,
+      [{ id: 'no', label: 'Cancelar', cls: 'sec' }, { id: 'si', label: 'Cargar cupos' }]);
+    if (r.boton !== 'si') return;
+    const res = await intentar(api('importarCupos', { fechaDesde: r.datos.desde, fechaHasta: r.datos.hasta, tipoId: r.datos.tipo, texto: r.datos.texto }));
+    await modal('Cupos cargados', `<p>${res.areas} área(s), ${res.cargados} cupo(s) guardados.</p>${res.errores.length
+      ? `<p><b>Revisar:</b></p><ul>${res.errores.map(e => `<li>${esc(e)}</li>`).join('')}</ul><p class="muted">Las áreas tienen que existir en Catálogos › Grupos con el mismo nombre.</p>` : ''}`);
+    cargar();
+  };
+  await cargar();
 };
 
 /* ===================== Lotes ===================== */
@@ -641,7 +809,7 @@ async function verLote(loteId) {
     <p class="muted">${esc(nomGrupo(d.lote.grupoId))} · ${esc(nomTipo(d.lote.tipoId))} · ${esc(d.lote.observaciones || '')}</p>
     <p>${LISTA_ESTADOS.filter(e => d.conteo[e]).map(e => badge(e) + ' ' + d.conteo[e]).join(' &nbsp; ')}</p>
     <div class="row" style="margin-bottom:10px">
-      <button class="btn" id="ldEntregar" type="button">Entregar</button>
+      ${APP.user.entregaManual ? '<button class="btn" id="ldEntregar" type="button">Entregar</button>' : ''}
       <button class="btn sec" id="ldReimp" type="button">Reimprimir</button>
       <button class="btn danger" id="ldAnular" type="button">Anular</button>
       <span class="muted">Si no seleccionás ninguno, la acción aplica a todos los vouchers pendientes del lote.</span>
@@ -654,7 +822,7 @@ async function verLote(loteId) {
   cont.scrollIntoView({ behavior: 'smooth' });
   const sel = () => $$('.ldSel:checked').map(c => c.value);
   $('#ldTodos').onchange = (e) => $$('.ldSel').forEach(c => c.checked = e.target.checked);
-  $('#ldEntregar').onclick = async () => {
+  if ($('#ldEntregar')) $('#ldEntregar').onclick = async () => {
     const r = await modal('Entregar vouchers', `<p>${sel().length ? sel().length + ' seleccionados' : 'Todos los pendientes del lote'}.</p>
       <div class="field"><label>Recibe (nombre del responsable)</label><input name="recibe"></div>`,
       [{ id: 'no', label: 'Cancelar', cls: 'sec' }, { id: 'si', label: 'Registrar entrega' }]);
@@ -954,7 +1122,7 @@ const DEF_CATALOGOS = {
     titulo: 'Grupos', id: 'grupoId', solo: 'ADMIN',
     columnas: [['nombre', 'Nombre'], ['modalidad', 'Modalidad'], ['responsable', 'Responsable'], ['comedoresIds', 'Comedores', ids => String(ids).split(',').map(nomComedor).join(', ')]],
     campos: () => [{ name: 'nombre', label: 'Nombre' },
-      { name: 'modalidad', label: 'Modalidad', type: 'select', options: [{ v: 'NOMINATIVO', l: 'Nominativo (a nombre de cada persona)' }, { v: 'PORTADOR', l: 'Al portador' }] },
+      { name: 'modalidad', label: 'Modalidad', type: 'select', options: [{ v: 'NOMINATIVO', l: 'Nominativo (a nombre de cada persona)' }, { v: 'PORTADOR', l: 'Al portador' }, { v: 'MIXTO', l: 'Mixto (al portador + nominativos a medida que se conocen)' }] },
       { name: 'responsable', label: 'Responsable' }, { name: 'contacto', label: 'Contacto (teléfono / email)' },
       { name: 'comedoresIds', label: 'Comedores donde vale', type: 'multi', options: APP.comedores.filter(activo).map(c => ({ v: c.comedorId, l: c.nombre })) },
       { name: 'activo', label: 'Activo', type: 'bool', def: 'TRUE' }]
@@ -981,7 +1149,7 @@ async function mostrarCatalogo(nombre, grupoId) {
   const def = DEF_CATALOGOS[nombre];
   const cont = $('#catCont');
   const esPersonas = nombre === 'personas';
-  if (esPersonas && !grupoId) grupoId = (APP.grupos.find(g => g.modalidad === 'NOMINATIVO' && activo(g)) || {}).grupoId || '';
+  if (esPersonas && !grupoId) grupoId = (APP.grupos.find(g => g.modalidad !== 'PORTADOR' && activo(g)) || {}).grupoId || '';
   const lista = esPersonas && !grupoId ? [] : await intentar(api('listarCatalogo', nombre, esPersonas ? { grupoId } : null));
   cont.innerHTML = `<div class="card"><div class="row" style="justify-content:space-between;align-items:center">
       <h2>${esc(def.titulo)}</h2><button class="btn" id="catNuevo" type="button">+ Nuevo</button></div>
@@ -1034,16 +1202,18 @@ RENDER.usuarios = async (main) => {
   const lista = await intentar(api('listarUsuarios'));
   main.innerHTML = `<div class="card"><div class="row" style="justify-content:space-between;align-items:center"><h2>Usuarios</h2>
     <button class="btn" id="usNuevo" type="button">+ Nuevo</button></div>
-    <div class="table-wrap"><table><thead><tr><th>Usuario</th><th>Nombre</th><th>Rol</th><th>Comedor</th><th>Estado</th><th></th></tr></thead><tbody>
+    <div class="table-wrap"><table><thead><tr><th>Usuario</th><th>Nombre</th><th>Rol</th><th>Comedor</th><th>Entrega sin escanear</th><th>Estado</th><th></th></tr></thead><tbody>
     ${lista.map(u => `<tr><td>${esc(u.usuario)}</td><td>${esc(u.nombre)}</td><td>${esc(u.rol)}</td><td>${esc(nomComedor(u.comedorId))}</td>
+      <td>${u.rol === 'ADMIN' || activo({ activo: u.entregaManual }) ? 'Sí' : '<span class="muted">No</span>'}</td>
       <td>${activo(u) ? 'Activo' : '<span class="muted">Inactivo</span>'}</td><td><button class="btn sec small" data-u="${esc(u.usuario)}" type="button">Editar</button></td></tr>`).join('')}
     </tbody></table></div>
-    <p class="muted">Roles: ADMIN (todo), OPERADOR (emite, entrega, anula, reportes, personas), COMEDOR (solo canje en su comedor).</p></div>`;
+    <p class="muted">Roles: ADMIN (todo), OPERADOR (emite, entrega, anula, reportes, personas), COMEDOR (solo canje en su comedor). Marcar entregas sin escanear (desde Lotes o Cupos) lo pueden hacer los ADMIN y los OPERADOR habilitados.</p></div>`;
   const campos = (nuevo) => [
     { name: 'usuario', label: 'Usuario', readonly: !nuevo }, { name: 'nombre', label: 'Nombre' },
     { name: 'rol', label: 'Rol', type: 'select', options: ['OPERADOR', 'COMEDOR', 'ADMIN'].map(r => ({ v: r, l: r })) },
     { name: 'comedorId', label: 'Comedor (solo rol COMEDOR)', type: 'select', options: [{ v: '', l: '—' }].concat(APP.comedores.filter(activo).map(c => ({ v: c.comedorId, l: c.nombre }))) },
     { name: 'pin', label: nuevo ? 'PIN' : 'Nuevo PIN (dejar vacío para no cambiar)', type: 'password' },
+    { name: 'entregaManual', label: 'Puede marcar entregas sin escanear (solo OPERADOR)', type: 'bool', def: 'FALSE' },
     { name: 'activo', label: 'Activo', type: 'bool', def: 'TRUE' }];
   const editar = async (u) => {
     const datos = await editarEnModal(u ? 'Editar usuario' : 'Nuevo usuario', campos(!u), u);
@@ -1067,6 +1237,7 @@ RENDER.config = async (main) => {
     { name: 'ANCHO_TICKET', label: 'Ancho del papel', type: 'select', options: [{ v: '80', l: '80 mm' }, { v: '58', l: '58 mm' }] },
     { name: 'REQUIERE_ENTREGA_PARA_CANJE', label: 'Exigir que el voucher esté ENTREGADO para poder canjearlo', type: 'bool' },
     { name: 'TZ', label: 'Zona horaria' },
+    { name: 'CUPO_TOLERANCIA', label: 'Tolerancia del cupo diario (personas de más sin aviso)', type: 'number' },
     { name: 'ARCHIVO_DIAS', label: 'Archivar vouchers finalizados con más de N días', type: 'number' },
     { name: 'ARCHIVO_SPREADSHEET_ID', label: 'ID de planilla de archivo (vacío = se crea sola)' }
   ];
