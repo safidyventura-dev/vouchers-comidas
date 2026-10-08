@@ -330,6 +330,35 @@ const Scanner = {
   }
 };
 
+/*
+ * Lector de códigos USB/Bluetooth: se comporta como un teclado que tipea el código en ráfaga y
+ * termina con Enter. Se detecta por la velocidad, sin necesidad de tener un campo seleccionado.
+ * Si el foco estaba en un campo, se le quita lo que tipeó el lector.
+ */
+const LectorTeclado = {
+  onCode: null, buf: '', t: 0, cola: Promise.resolve(),
+  activar(onCode) { this.onCode = onCode; this.buf = ''; },
+  desactivar() { this.onCode = null; this.buf = ''; }
+};
+document.addEventListener('keydown', (e) => {
+  const L = LectorTeclado;
+  if (!L.onCode || e.ctrlKey || e.altKey || e.metaKey) return;
+  const ahora = Date.now();
+  if (ahora - L.t > 60) L.buf = ''; // pausa de tipeo humano: empieza de cero
+  L.t = ahora;
+  if (e.key === 'Enter') {
+    const txt = L.buf; L.buf = '';
+    if (txt.length < 8) return;
+    e.preventDefault(); e.stopPropagation(); // que el Enter no dispare también el botón del campo
+    const el = e.target;
+    if (el && 'value' in el && typeof el.value === 'string' && el.value.endsWith(txt)) el.value = el.value.slice(0, -txt.length);
+    const onCode = L.onCode;
+    L.cola = L.cola.then(() => onCode(txt)).catch(() => {}); // escaneos seguidos se procesan en orden
+  } else if (e.key.length === 1) {
+    L.buf += e.key;
+  }
+}, true);
+
 /** Extrae el código de un texto escaneado (URL con ?c=... o código directo). */
 function extraerCodigo(txt) {
   const m = String(txt).match(/[?&]c=([^&#]+)/);
@@ -404,6 +433,7 @@ function puede(id) {
 async function irA(id) {
   if (!puede(id)) id = VISTAS.find(v => puede(v.id)).id;
   await Scanner.detener();
+  LectorTeclado.desactivar();
   APP.view = id;
   $$('#nav button').forEach(b => b.classList.toggle('active', b.dataset.id === id));
   const main = $('#main');
@@ -436,6 +466,7 @@ function cerrarSesion(silencioso) {
   APP.token = null; APP.user = null;
   store.del('vt_token');
   Scanner.detener();
+  LectorTeclado.desactivar();
   $('#appView').classList.add('hidden');
   $('#loginView').classList.remove('hidden');
   $('#loginPin').value = '';
@@ -654,7 +685,7 @@ RENDER.entregar = async (main) => {
       <div class="field" style="flex:0"><button class="btn sec" id="enManual" type="button">Entregar</button></div></div>
     <button class="btn big" id="enScan" type="button">Activar cámara</button>
     <div id="enLector" class="scanner" style="margin-top:12px"></div>
-    <div class="contador" id="enCont"></div></div>
+    <div class="contador" id="enCont"></div><p class="muted" style="margin:8px 0 0">Con lector de códigos (USB o Bluetooth): escaneá directamente, sin tocar nada.</p></div>
     <div class="card"><h3>Entregados en esta sesión</h3><div id="enLog" class="muted">—</div></div>`;
   let n = 0;
   const log = [];
@@ -671,6 +702,7 @@ RENDER.entregar = async (main) => {
     $('#enCont').textContent = `Entregados: ${n}`;
     $('#enLog').innerHTML = log.slice(0, 50).map(esc).join('<br>');
   };
+  LectorTeclado.activar(procesar);
   $('#enManual').onclick = () => { const c = $('#enCodigo').value; $('#enCodigo').value = ''; if (c) procesar(c); };
   $('#enScan').onclick = async () => {
     try { await Scanner.iniciar('enLector', procesar); $('#enScan').classList.add('hidden'); }
@@ -689,6 +721,7 @@ RENDER.canje = async (main) => {
     <button class="btn big" id="caScan" type="button">Activar cámara</button>
     <div id="caLector" class="scanner" style="margin-top:12px"></div>
     <div class="contador" id="caCont">Canjes en esta sesión: 0</div>
+    <p class="muted" style="margin:8px 0 0">Con lector de códigos (USB o Bluetooth): escaneá directamente, sin tocar nada.</p>
     <div class="row" style="margin-top:12px"><div class="field"><label>Código manual</label><input id="caCodigo" placeholder="V0000001-ABCD1234" autocapitalize="characters"></div>
       <div class="field" style="flex:0"><button class="btn sec" id="caManual" type="button">Canjear</button></div></div>
   </div>
@@ -725,6 +758,7 @@ RENDER.canje = async (main) => {
     } catch (e) { mostrar({ ok: false, mensaje: e.message }); }
   };
 
+  LectorTeclado.activar(procesar);
   $('#caManual').onclick = () => { const c = $('#caCodigo').value; $('#caCodigo').value = ''; if (c) procesar(c); };
   $('#caCodigo').onkeydown = (e) => { if (e.key === 'Enter') $('#caManual').click(); };
   $('#caScan').onclick = async () => {
@@ -758,7 +792,7 @@ RENDER.buscar = async (main) => {
     <div class="row"><div class="field"><label>Código</label><input id="buCodigo" placeholder="V0000001-ABCD1234 o V0000001" autocapitalize="characters"></div>
       <div class="field" style="flex:0"><button class="btn" id="buBtn" type="button">Buscar</button></div>
       <div class="field" style="flex:0"><button class="btn sec" id="buScan" type="button">Escanear</button></div></div>
-    <div id="buLector" class="scanner"></div></div><div id="buRes"></div>`;
+    <div id="buLector" class="scanner"></div><p class="muted" style="margin:8px 0 0">Con lector de códigos (USB o Bluetooth): escaneá directamente, sin tocar nada.</p></div><div id="buRes"></div>`;
   const buscar = async (codigo) => {
     codigo = extraerCodigo(codigo);
     if (!codigo) return;
@@ -797,6 +831,7 @@ RENDER.buscar = async (main) => {
       toast(res.anulados ? 'Voucher anulado.' : res.errores.join(' '), !res.anulados); buscar(v.codigo);
     };
   };
+  LectorTeclado.activar(async (txt) => { $('#buCodigo').value = extraerCodigo(txt); await buscar(txt); });
   $('#buBtn').onclick = () => buscar($('#buCodigo').value);
   $('#buCodigo').onkeydown = (e) => { if (e.key === 'Enter') buscar($('#buCodigo').value); };
   $('#buScan').onclick = async () => {
