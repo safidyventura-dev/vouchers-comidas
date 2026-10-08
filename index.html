@@ -1,0 +1,1074 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <title>Vouchers de Comida</title>
+  <script>window.API_URL = "https://script.google.com/macros/s/AKfycbxBNQA226y6qAGZIPDyVAgFIQ2PkV5QShwV3K84degRqLHkJRMXWJL8bV-4fG5IrhPl9Q/exec";</script>
+  <style>
+  :root {
+    --bg: #f5f6f8; --card: #ffffff; --text: #1f2328; --muted: #656d76; --border: #d0d7de;
+    --primary: #1a73e8; --primary-text: #fff; --ok: #1e8e3e; --bad: #d93025; --warn: #f9ab00;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text);
+    font: 15px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  h1, h2, h3 { margin: 0 0 12px; }
+  h2 { font-size: 20px; } h3 { font-size: 16px; }
+  a { color: var(--primary); }
+  .hidden { display: none !important; }
+  .muted { color: var(--muted); font-size: 13px; }
+
+  header { background: var(--card); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 10; }
+  .topbar { display: flex; align-items: center; gap: 12px; padding: 8px 16px; }
+  .topbar .org { font-weight: 600; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .topbar .user { font-size: 13px; color: var(--muted); }
+  nav { display: flex; gap: 4px; padding: 0 12px 8px; overflow-x: auto; }
+  nav button { background: none; border: 1px solid transparent; padding: 6px 12px; border-radius: 20px; cursor: pointer;
+    color: var(--text); white-space: nowrap; font-size: 14px; }
+  nav button.active { background: #e8f0fe; color: var(--primary); border-color: #c6dafc; font-weight: 600; }
+
+  main { max-width: 1100px; margin: 0 auto; padding: 16px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 16px; }
+  .grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-end; }
+  label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 4px; }
+  input, select, textarea { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px;
+    font: inherit; background: #fff; color: var(--text); }
+  textarea { min-height: 90px; }
+  input[type=checkbox] { width: auto; }
+  .field { margin-bottom: 10px; flex: 1; min-width: 150px; }
+  button.btn { background: var(--primary); color: var(--primary-text); border: 0; padding: 9px 16px; border-radius: 8px;
+    cursor: pointer; font: inherit; font-weight: 600; }
+  button.btn:disabled { opacity: .5; cursor: default; }
+  button.btn.sec { background: #fff; color: var(--primary); border: 1px solid var(--border); }
+  button.btn.danger { background: var(--bad); }
+  button.btn.small { padding: 5px 10px; font-size: 13px; }
+  button.btn.big { width: 100%; padding: 16px; font-size: 18px; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid #eaeef2; vertical-align: top; }
+  th { background: #f6f8fa; font-weight: 600; position: sticky; top: 0; }
+  td.num, th.num { text-align: right; }
+  .table-wrap { overflow: auto; max-height: 60vh; border: 1px solid #eaeef2; border-radius: 8px; }
+
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 12px; font-weight: 600; }
+  .b-IMPRESO { background: #e8eaed; color: #3c4043; }
+  .b-ENTREGADO { background: #e8f0fe; color: #1967d2; }
+  .b-USADO { background: #e6f4ea; color: #137333; }
+  .b-ANULADO { background: #fce8e6; color: #c5221f; }
+  .b-VENCIDO { background: #fef7e0; color: #b06000; }
+
+  .kpis { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); }
+  .kpi { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; }
+  .kpi .v { font-size: 26px; font-weight: 700; }
+  .kpi .l { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  .tabs { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
+  .tabs button { border: 1px solid var(--border); background: #fff; padding: 6px 12px; border-radius: 8px; cursor: pointer; font: inherit; }
+  .tabs button.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+  #toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: #323232; color: #fff;
+    padding: 10px 18px; border-radius: 8px; z-index: 100; max-width: 90vw; box-shadow: 0 4px 12px rgba(0,0,0,.2); }
+  #toast.error { background: var(--bad); }
+  #loading { position: fixed; top: 0; left: 0; right: 0; height: 3px; background: var(--primary); z-index: 200;
+    animation: load 1s infinite linear; transform-origin: left; }
+  @keyframes load { 0% { transform: scaleX(0); } 100% { transform: scaleX(1); } }
+
+  .login { max-width: 360px; margin: 10vh auto; }
+  .login img { max-height: 70px; display: block; margin: 0 auto 12px; }
+
+  /* Escáner y canje */
+  .scanner { width: 100%; max-width: 420px; margin: 0 auto; border-radius: var(--radius); overflow: hidden; background: #000; }
+  .resultado { position: fixed; inset: 0; z-index: 50; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; color: #fff; text-align: center; padding: 24px; cursor: pointer; }
+  .resultado.ok { background: var(--ok); }
+  .resultado.bad { background: var(--bad); }
+  .resultado .icono { font-size: 90px; line-height: 1; }
+  .resultado .msg { font-size: 26px; font-weight: 700; margin: 12px 0; }
+  .resultado .det { font-size: 18px; opacity: .95; }
+  .contador { font-size: 14px; color: var(--muted); text-align: center; margin-top: 8px; }
+
+  .lista-personas { max-height: 300px; overflow: auto; border: 1px solid #eaeef2; border-radius: 8px; padding: 6px; }
+  .lista-personas label { display: flex; gap: 8px; align-items: center; color: var(--text); font-size: 14px; padding: 4px; margin: 0; }
+
+  .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 60; display: flex; align-items: center; justify-content: center; padding: 16px; }
+  .modal { background: #fff; border-radius: var(--radius); padding: 18px; width: 100%; max-width: 520px; max-height: 90vh; overflow: auto; }
+  .modal .acciones { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; }
+
+  /* Impresión de tickets */
+  #printArea { display: none; }
+  @media print {
+    @page { margin: 0; }
+    body { background: #fff; }
+    body > *:not(#printArea) { display: none !important; }
+    #printArea { display: block; }
+  }
+  .ticket { width: var(--ticket-w, 72mm); padding: 3mm 2mm 6mm; margin: 0 auto; color: #000; font-family: Arial, Helvetica, sans-serif;
+    text-align: center; page-break-after: always; break-after: page; }
+  .ticket:last-child { page-break-after: auto; break-after: auto; }
+  .ticket img.logo { display: block; margin: 0 auto; height: auto; max-width: 100%; }
+  .ticket .org { font-weight: 700; font-size: 13px; margin: 1mm 0; }
+  .ticket .tipo { font-size: 22px; font-weight: 800; letter-spacing: .04em; margin: 2mm 0 1mm; border-top: 1px dashed #000; border-bottom: 1px dashed #000; padding: 1mm 0; }
+  .ticket .fecha { font-size: 16px; font-weight: 700; }
+  .ticket .franja { font-size: 13px; }
+  .ticket .persona { font-size: 15px; font-weight: 700; margin-top: 2mm; }
+  .ticket .grupo { font-size: 12px; }
+  .ticket .qr { display: flex; justify-content: center; margin: 2mm 0; }
+  .ticket .qr svg { width: 38mm; height: 38mm; display: block; }
+  .ticket .codigo { font-family: "Courier New", monospace; font-size: 13px; font-weight: 700; }
+  .ticket .comedores { font-size: 15px; font-weight: 700; margin-top: 1mm; }
+  .ticket .pie { font-size: 9px; margin-top: 2mm; }
+  .ticket .reimp { font-size: 10px; font-weight: 700; }
+
+  @media (max-width: 600px) {
+    main { padding: 10px; }
+    .card { padding: 12px; }
+    .topbar .user { display: none; }
+  }
+</style>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+</head>
+<body>
+  <input type="hidden" id="boot" value="{&quot;page&quot;:&quot;&quot;,&quot;code&quot;:&quot;&quot;,&quot;url&quot;:&quot;https://script.google.com/macros/s/AKfycbxBNQA226y6qAGZIPDyVAgFIQ2PkV5QShwV3K84degRqLHkJRMXWJL8bV-4fG5IrhPl9Q/exec&quot;}">
+  <div id="loading" class="hidden"></div>
+  <div id="toast" class="hidden"></div>
+
+  <!-- Login -->
+  <section id="loginView" class="hidden">
+    <div class="card login">
+      <img id="loginLogo" class="hidden" alt="">
+      <h2 id="loginOrg" style="text-align:center">Vouchers de Comida</h2>
+      <form id="loginForm">
+        <div class="field"><label>Usuario</label><input id="loginUser" autocomplete="username" autocapitalize="none" required></div>
+        <div class="field"><label>PIN</label><input id="loginPin" type="password" inputmode="numeric" autocomplete="current-password" required></div>
+        <button class="btn big" type="submit">Ingresar</button>
+      </form>
+    </div>
+  </section>
+
+  <!-- App -->
+  <div id="appView" class="hidden">
+    <header>
+      <div class="topbar">
+        <div class="org" id="orgNombre"></div>
+        <div class="user" id="userInfo"></div>
+        <button class="btn sec small" id="btnPin" type="button">PIN</button>
+        <button class="btn sec small" id="btnSalir" type="button">Salir</button>
+      </div>
+      <nav id="nav"></nav>
+    </header>
+    <main id="main"></main>
+  </div>
+
+  <div id="modalRoot"></div>
+  <div id="printArea"></div>
+
+  <script>
+/* ===================== Utilidades ===================== */
+const $ = (s, el) => (el || document).querySelector(s);
+const $$ = (s, el) => Array.from((el || document).querySelectorAll(s));
+const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const BOOT = JSON.parse($('#boot').value || '{}');
+if (window.API_URL) { // página publicada fuera de Apps Script: los parámetros vienen en la URL propia
+  const q = new URLSearchParams(location.search);
+  BOOT.page = q.get('page') || ''; BOOT.code = q.get('c') || '';
+}
+const LISTA_ESTADOS = ['IMPRESO', 'ENTREGADO', 'USADO', 'ANULADO', 'VENCIDO'];
+
+const APP = { token: null, user: null, config: {}, comedores: [], tipos: [], grupos: [], view: null };
+
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} },
+  del(k) { try { localStorage.removeItem(k); } catch (e) {} }
+};
+
+function hoyISO() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+function sumarDias(iso, n) {
+  const p = iso.split('-').map(Number);
+  const d = new Date(p[0], p[1] - 1, p[2] + n);
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+function fechaLeg(iso) { return iso && /^\d{4}-\d{2}-\d{2}/.test(iso) ? iso.substring(8, 10) + '/' + iso.substring(5, 7) + '/' + iso.substring(0, 4) + iso.substring(10) : (iso || ''); }
+function badge(e) { return `<span class="badge b-${esc(e)}">${esc(e)}</span>`; }
+function activo(o) { return String(o.activo).toUpperCase() === 'TRUE'; }
+function nombreDe(lista, campo, id) { const o = lista.find(x => x[campo] === id); return o ? o.nombre : (id || ''); }
+const nomComedor = id => nombreDe(APP.comedores, 'comedorId', id);
+const nomTipo = id => nombreDe(APP.tipos, 'tipoId', id);
+const nomGrupo = id => nombreDe(APP.grupos, 'grupoId', id);
+function opciones(lista, idCampo, sel, vacio) {
+  return (vacio ? `<option value="">${esc(vacio)}</option>` : '') +
+    lista.map(o => `<option value="${esc(o[idCampo])}" ${o[idCampo] === sel ? 'selected' : ''}>${esc(o.nombre)}</option>`).join('');
+}
+
+let toastTimer;
+function toast(msg, error) {
+  const t = $('#toast');
+  t.textContent = msg;
+  t.className = error ? 'error' : '';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.className = 'hidden', error ? 6000 : 3000);
+}
+
+let cargando = 0;
+function setCargando(d) { cargando += d; $('#loading').classList.toggle('hidden', cargando <= 0); }
+
+/**
+ * Ejecuta una función del servidor. Dentro de Apps Script usa google.script.run; publicada afuera
+ * (GitHub Pages, donde el navegador sí deja usar la cámara) llama a doPost en window.API_URL.
+ */
+function llamarServidor(fn, args) {
+  if (window.google && google.script && google.script.run) {
+    return new Promise((resolve, reject) => {
+      google.script.run.withSuccessHandler(resolve)
+        .withFailureHandler(e => reject(new Error(((e && e.message) || String(e)).replace(/^Error:\s*/, ''))))[fn](...args);
+    });
+  }
+  // text/plain evita el preflight CORS, que Apps Script no responde.
+  return fetch(window.API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ fn, args }) })
+    .catch(() => { throw new Error('Sin conexión con el servidor. Revisá internet y probá de nuevo.'); })
+    .then(r => r.json().catch(() => { throw new Error('El servidor respondió algo inesperado. Revisá que la implementación tenga acceso "Cualquier persona".'); }))
+    .then(j => { if ('error' in j) throw new Error(String(j.error).replace(/^Error:\s*/, '')); return j.resultado; });
+}
+/** Llama a una función del servidor pasando el token como primer argumento. */
+function api(fn, ...args) {
+  setCargando(1);
+  return llamarServidor(fn, [APP.token, ...args]).then(
+    r => { setCargando(-1); return r; },
+    e => {
+      setCargando(-1);
+      if (e.message.indexOf('SESION_EXPIRADA') >= 0) { cerrarSesion(true); throw new Error('Tu sesión expiró. Ingresá de nuevo.'); }
+      throw e;
+    });
+}
+/** Igual que api pero sin token (login). */
+function apiPublica(fn, ...args) {
+  setCargando(1);
+  return llamarServidor(fn, args).then(r => { setCargando(-1); return r; }, e => { setCargando(-1); throw e; });
+}
+/** Ejecuta una promesa mostrando errores como toast. */
+async function intentar(p) {
+  try { return await p; } catch (e) { toast(e.message, true); throw e; }
+}
+
+/* ===================== Modal ===================== */
+function modal(titulo, html, botones) {
+  return new Promise(resolve => {
+    const root = $('#modalRoot');
+    root.innerHTML = `<div class="modal-bg"><div class="modal"><h3>${esc(titulo)}</h3><div class="cuerpo">${html}</div>
+      <div class="acciones">${(botones || [{ id: 'ok', label: 'Aceptar' }]).map(b =>
+        `<button type="button" class="btn ${b.cls || ''}" data-id="${b.id}">${esc(b.label)}</button>`).join('')}</div></div></div>`;
+    const cerrar = (id) => {
+      const datos = {};
+      $$('[name]', root).forEach(el => datos[el.name] = el.type === 'checkbox' ? el.checked : el.value);
+      root.innerHTML = '';
+      resolve({ boton: id, datos });
+    };
+    $$('.acciones button', root).forEach(b => b.onclick = () => cerrar(b.dataset.id));
+    const primero = $('input,textarea,select', root);
+    if (primero) primero.focus();
+  });
+}
+async function confirmar(titulo, texto, label, cls) {
+  const r = await modal(titulo, `<p>${esc(texto)}</p>`, [{ id: 'no', label: 'Cancelar', cls: 'sec' }, { id: 'si', label: label || 'Confirmar', cls: cls || '' }]);
+  return r.boton === 'si';
+}
+async function pedirTexto(titulo, etiqueta, label, cls) {
+  const r = await modal(titulo, `<div class="field"><label>${esc(etiqueta)}</label><textarea name="texto"></textarea></div>`,
+    [{ id: 'no', label: 'Cancelar', cls: 'sec' }, { id: 'si', label: label || 'Aceptar', cls: cls || '' }]);
+  return r.boton === 'si' ? r.datos.texto.trim() : null;
+}
+
+/* ===================== Sonido ===================== */
+let audioCtx;
+function beep(ok) {
+  try {
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    const tonos = ok ? [[880, 0, .12]] : [[220, 0, .18], [180, .22, .3]];
+    tonos.forEach(([f, ini, dur]) => {
+      const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+      o.frequency.value = f; o.type = ok ? 'sine' : 'square';
+      g.gain.value = .15;
+      o.connect(g); g.connect(audioCtx.destination);
+      o.start(audioCtx.currentTime + ini); o.stop(audioCtx.currentTime + ini + dur);
+    });
+    if (navigator.vibrate) navigator.vibrate(ok ? 80 : [200, 80, 200]);
+  } catch (e) {}
+}
+
+/* ===================== Escáner QR ===================== */
+const Scanner = {
+  inst: null, ultimo: '', ultimoT: 0, ocupado: false,
+  async iniciar(elId, onCode) {
+    await this.detener();
+    if (!window.Html5Qrcode) throw new Error('No se pudo cargar el lector de QR. Usá el ingreso manual.');
+    this.inst = new Html5Qrcode(elId, {
+      verbose: false,
+      formatsToSupport: window.Html5QrcodeSupportedFormats ? [Html5QrcodeSupportedFormats.QR_CODE] : undefined,
+      experimentalFeatures: { useBarCodeDetectorIfSupported: true } // lector nativo del navegador, más rápido
+    });
+    await this.inst.start({ facingMode: 'environment' }, { fps: 15, qrbox: { width: 240, height: 240 } }, async (txt) => {
+      const ahora = Date.now();
+      if (this.ocupado || (txt === this.ultimo && ahora - this.ultimoT < 4000)) return;
+      this.ultimo = txt; this.ultimoT = ahora; this.ocupado = true;
+      try { await onCode(txt); } finally { this.ocupado = false; }
+    }, () => {});
+  },
+  async detener() {
+    if (this.inst) {
+      try { if (this.inst.isScanning) await this.inst.stop(); this.inst.clear(); } catch (e) {}
+      this.inst = null;
+    }
+  }
+};
+
+/** Extrae el código de un texto escaneado (URL con ?c=... o código directo). */
+function extraerCodigo(txt) {
+  const m = String(txt).match(/[?&]c=([^&#]+)/);
+  return (m ? decodeURIComponent(m[1]) : String(txt)).trim().toUpperCase();
+}
+
+/* ===================== Impresión de tickets ===================== */
+function ticketHtml(t, i, c = APP.config) {
+  return `<div class="ticket">
+    ${c.logoUrl && c.logoEscala > 0 ? `<img class="logo" src="${esc(c.logoUrl)}" alt="" style="width:${Number(c.logoEscala)}%">` : ''}
+    <div class="org">${esc(c.orgNombre)}</div>
+    <div class="tipo">${esc(String(t.tipo).toUpperCase())}</div>
+    <div class="fecha">${esc(t.fecha)}</div>
+    <div class="franja">Horario: ${esc(t.franja)}</div>
+    ${t.persona ? `<div class="persona">${esc(t.persona)}</div>` : ''}
+    <div class="grupo">${esc(t.grupo)}</div>
+    <div class="qr" id="qr${i}"></div>
+    <div class="codigo">${esc(t.codigo)}</div>
+    <div class="comedores">${esc(t.comedores)}</div>
+    ${t.reimpresion ? '<div class="reimp">** REIMPRESIÓN **</div>' : ''}
+    <div class="pie">${esc(c.ticketPie)}</div>
+  </div>`;
+}
+
+/**
+ * QR como SVG vectorial: cada módulo es un cuadrado exacto, así la térmica lo imprime nítido
+ * (un canvas estirado deja bordes borrosos). Usa qrcodejs solo para calcular la matriz.
+ */
+function qrSvg(texto) {
+  const tmp = document.createElement('div');
+  const m = new QRCode(tmp, { text: texto, width: 1, height: 1, correctLevel: QRCode.CorrectLevel.M })._oQRCode;
+  const n = m.getModuleCount(), borde = 4; // zona blanca de 4 módulos que pide el estándar
+  let d = '';
+  for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (m.isDark(r, c)) d += `M${c + borde} ${r + borde}h1v1h-1z`;
+  const t = n + borde * 2;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${t} ${t}" shape-rendering="crispEdges">` +
+    `<rect width="${t}" height="${t}" fill="#fff"/><path d="${d}" fill="#000"/></svg>`;
+}
+
+function imprimirTickets(tickets, cfg = APP.config) {
+  if (!tickets || !tickets.length) return;
+  if (!window.QRCode) { toast('No se pudo cargar el generador de QR. Revisá la conexión.', true); return; }
+  const area = $('#printArea');
+  area.style.setProperty('--ticket-w', ((cfg.anchoTicket || 80) - 8) + 'mm');
+  area.innerHTML = tickets.map((t, i) => ticketHtml(t, i, cfg)).join('');
+  tickets.forEach((t, i) => { document.getElementById('qr' + i).innerHTML = qrSvg(t.qr || t.codigo); });
+  const imgs = $$('img.logo', area);
+  Promise.all(imgs.map(img => img.complete ? 1 : new Promise(r => { img.onload = img.onerror = r; })))
+    .then(() => setTimeout(() => window.print(), 400));
+}
+
+/* ===================== Sesión y navegación ===================== */
+const VISTAS = [
+  { id: 'inicio', label: 'Inicio', roles: ['ADMIN', 'OPERADOR'] },
+  { id: 'emitir', label: 'Emitir', roles: ['ADMIN', 'OPERADOR'] },
+  { id: 'lotes', label: 'Lotes', roles: ['ADMIN', 'OPERADOR'] },
+  { id: 'entregar', label: 'Entregar', roles: ['ADMIN', 'OPERADOR'] },
+  { id: 'canje', label: 'Canje', roles: ['ADMIN', 'OPERADOR', 'COMEDOR'] },
+  { id: 'buscar', label: 'Buscar / Anular', roles: ['ADMIN', 'OPERADOR'] },
+  { id: 'reportes', label: 'Reportes', roles: ['ADMIN', 'OPERADOR'] },
+  { id: 'catalogos', label: 'Catálogos', roles: ['ADMIN', 'OPERADOR'] },
+  { id: 'usuarios', label: 'Usuarios', roles: ['ADMIN'] },
+  { id: 'config', label: 'Configuración', roles: ['ADMIN'] }
+];
+const RENDER = {}; // id de vista -> función(main)
+
+function puede(id) {
+  const v = VISTAS.find(x => x.id === id);
+  return v && APP.user && v.roles.indexOf(APP.user.rol) >= 0;
+}
+
+async function irA(id) {
+  if (!puede(id)) id = VISTAS.find(v => puede(v.id)).id;
+  await Scanner.detener();
+  APP.view = id;
+  $$('#nav button').forEach(b => b.classList.toggle('active', b.dataset.id === id));
+  const main = $('#main');
+  main.innerHTML = '';
+  try { await RENDER[id](main); } catch (e) { toast(e.message, true); }
+}
+
+async function recargarDatos() {
+  const d = await api('datosIniciales');
+  APP.user = d.usuario; APP.config = d.config;
+  APP.comedores = d.comedores; APP.tipos = d.tipos; APP.grupos = d.grupos;
+}
+
+async function iniciarApp() {
+  await recargarDatos();
+  $('#loginView').classList.add('hidden');
+  $('#appView').classList.remove('hidden');
+  $('#orgNombre').textContent = APP.config.orgNombre;
+  $('#userInfo').textContent = APP.user.nombre + ' · ' + APP.user.rol +
+    (APP.user.comedorId ? ' · ' + nomComedor(APP.user.comedorId) : '');
+  $('#nav').innerHTML = VISTAS.filter(v => puede(v.id))
+    .map(v => `<button type="button" data-id="${v.id}">${esc(v.label)}</button>`).join('');
+  $$('#nav button').forEach(b => b.onclick = () => irA(b.dataset.id));
+  const inicial = BOOT.page && puede(BOOT.page) ? BOOT.page : (APP.user.rol === 'COMEDOR' ? 'canje' : 'inicio');
+  irA(inicial);
+}
+
+function cerrarSesion(silencioso) {
+  if (!silencioso && APP.token) llamarServidor('logout', [APP.token]).catch(() => {});
+  APP.token = null; APP.user = null;
+  store.del('vt_token');
+  Scanner.detener();
+  $('#appView').classList.add('hidden');
+  $('#loginView').classList.remove('hidden');
+  $('#loginPin').value = '';
+}
+
+$('#loginForm').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  try {
+    const r = await apiPublica('login', $('#loginUser').value, $('#loginPin').value);
+    APP.token = r.token;
+    store.set('vt_token', r.token);
+    store.set('vt_user', $('#loginUser').value);
+    await iniciarApp();
+  } catch (e) { toast(e.message, true); }
+});
+
+$('#btnSalir').onclick = () => cerrarSesion(false);
+$('#btnPin').onclick = async () => {
+  const r = await modal('Cambiar mi PIN',
+    `<div class="field"><label>PIN actual</label><input name="actual" type="password" inputmode="numeric"></div>
+     <div class="field"><label>PIN nuevo</label><input name="nuevo" type="password" inputmode="numeric"></div>
+     <div class="field"><label>Repetir PIN nuevo</label><input name="rep" type="password" inputmode="numeric"></div>`,
+    [{ id: 'no', label: 'Cancelar', cls: 'sec' }, { id: 'si', label: 'Cambiar' }]);
+  if (r.boton !== 'si') return;
+  if (r.datos.nuevo !== r.datos.rep) return toast('Los PIN nuevos no coinciden.', true);
+  await intentar(api('cambiarPin', r.datos.actual, r.datos.nuevo));
+  toast('PIN actualizado.');
+};
+
+window.addEventListener('load', async () => {
+  $('#loginUser').value = store.get('vt_user') || '';
+  APP.token = store.get('vt_token');
+  if (APP.token) {
+    try { await iniciarApp(); return; } catch (e) { cerrarSesion(true); }
+  }
+  $('#loginView').classList.remove('hidden');
+});
+</script>
+
+  <script>
+/* ===================== Tablas genéricas ===================== */
+function tablaHtml(t, opts) {
+  opts = opts || {};
+  if (!t.rows.length) return '<p class="muted">Sin datos para el período.</p>';
+  const esNum = v => typeof v === 'number';
+  return `<div class="table-wrap"><table><thead><tr>${t.headers.map((h, i) =>
+    `<th class="${esNum(t.rows[0][i]) ? 'num' : ''}">${esc(h)}</th>`).join('')}</tr></thead><tbody>${t.rows.map(r =>
+    `<tr>${r.map(c => `<td class="${esNum(c) ? 'num' : ''}">${esc(c)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+}
+
+function kpisHtml(tot) {
+  const items = [['EMITIDOS', 'Emitidos (impresos)']].concat(LISTA_ESTADOS.map(e => [e, e === 'IMPRESO' ? 'Sin entregar' : e.charAt(0) + e.slice(1).toLowerCase() + 's']));
+  return `<div class="kpis">${items.map(([k, l]) =>
+    `<div class="kpi"><div class="v">${tot[k] || 0}</div><div class="l">${k === 'EMITIDOS' ? l : badge(k)}</div></div>`).join('')}</div>`;
+}
+
+/* ===================== Inicio ===================== */
+RENDER.inicio = async (main) => {
+  const hoy = hoyISO();
+  main.innerHTML = `<h2>Hoy · ${fechaLeg(hoy)}</h2><div id="kpisHoy"></div>
+    <div class="card" style="margin-top:16px"><h3>Por tipo de comida</h3><div id="tipoHoy"></div></div>`;
+  const r = await intentar(api('reporteDashboard', { desde: hoy, hasta: hoy }));
+  $('#kpisHoy').innerHTML = kpisHtml(r.totales);
+  $('#tipoHoy').innerHTML = tablaHtml(r.porTipo);
+};
+
+/* ===================== Emitir ===================== */
+RENDER.emitir = async (main) => {
+  const grupos = APP.grupos.filter(activo), tipos = APP.tipos.filter(activo);
+  main.innerHTML = `<div class="card"><h2>Emitir e imprimir vouchers</h2>
+    <div class="grid">
+      <div class="field"><label>Grupo</label><select id="emGrupo">${opciones(grupos, 'grupoId', '', 'Elegí un grupo…')}</select></div>
+      <div class="field"><label>Tipo de comida</label><select id="emTipo">${tipos.map(t =>
+        `<option value="${esc(t.tipoId)}">${esc(t.nombre)} (${esc(t.horaDesde)}–${esc(t.horaHasta)})</option>`).join('')}</select></div>
+      <div class="field"><label>Fecha desde</label><input id="emDesde" type="date" value="${hoyISO()}"></div>
+      <div class="field"><label>Fecha hasta (opcional)</label><input id="emHasta" type="date"></div>
+    </div>
+    <div id="emInfoGrupo" class="muted"></div>
+    <div id="emPortador" class="hidden"><div class="field" style="max-width:220px"><label>Cantidad por día</label><input id="emCant" type="number" min="1" value="1"></div></div>
+    <div id="emNominativo" class="hidden">
+      <div class="row"><div class="field"><label>Personas</label><input id="emFiltro" placeholder="Filtrar por nombre o documento"></div>
+        <button class="btn sec small" id="emTodos" type="button">Todos</button><button class="btn sec small" id="emNinguno" type="button">Ninguno</button></div>
+      <div class="lista-personas" id="emPersonas"></div>
+    </div>
+    <div class="field"><label>Observaciones</label><input id="emObs" maxlength="500"></div>
+    <div class="row"><div id="emTotal" class="muted" style="flex:1"></div><button class="btn" id="emBtn" type="button">Emitir e imprimir</button></div>
+  </div>`;
+
+  let personas = [];
+  const grupoSel = () => APP.grupos.find(g => g.grupoId === $('#emGrupo').value);
+  const dias = () => {
+    const d = $('#emDesde').value, h = $('#emHasta').value || d;
+    if (!d || h < d) return 0;
+    let n = 0; for (let f = d; f <= h && n < 400; f = sumarDias(f, 1)) n++;
+    return n;
+  };
+  const total = () => {
+    const g = grupoSel(); if (!g) return 0;
+    const porDia = g.modalidad === 'NOMINATIVO' ? $$('#emPersonas input:checked').length : (Number($('#emCant').value) || 0);
+    return porDia * dias();
+  };
+  const actualizarTotal = () => { $('#emTotal').textContent = `Total a emitir: ${total()} voucher(s) en ${dias()} día(s)`; };
+  const pintarPersonas = () => {
+    const f = $('#emFiltro').value.toLowerCase();
+    $$('#emPersonas label').forEach(l => l.classList.toggle('hidden', f && l.textContent.toLowerCase().indexOf(f) < 0));
+  };
+
+  $('#emGrupo').onchange = async () => {
+    const g = grupoSel();
+    $('#emPortador').classList.add('hidden'); $('#emNominativo').classList.add('hidden');
+    if (!g) { $('#emInfoGrupo').textContent = ''; actualizarTotal(); return; }
+    $('#emInfoGrupo').textContent = `${g.modalidad === 'NOMINATIVO' ? 'Nominativo' : 'Al portador'} · Válido en: ${String(g.comedoresIds).split(',').map(nomComedor).join(', ')}`;
+    if (g.modalidad === 'NOMINATIVO') {
+      personas = (await intentar(api('listarCatalogo', 'personas', { grupoId: g.grupoId }))).filter(activo);
+      $('#emPersonas').innerHTML = personas.length ? personas.map(p =>
+        `<label><input type="checkbox" value="${esc(p.personaId)}" checked> ${esc(p.nombre)} <span class="muted">${esc(p.documento)}</span></label>`).join('')
+        : '<p class="muted">El grupo no tiene personas activas. Cargalas en Catálogos.</p>';
+      $('#emNominativo').classList.remove('hidden');
+    } else {
+      $('#emPortador').classList.remove('hidden');
+    }
+    actualizarTotal();
+  };
+  ['emDesde', 'emHasta', 'emCant'].forEach(id => $('#' + id).oninput = actualizarTotal);
+  $('#emPersonas').onchange = actualizarTotal;
+  $('#emFiltro').oninput = pintarPersonas;
+  $('#emTodos').onclick = () => { $$('#emPersonas label:not(.hidden) input').forEach(c => c.checked = true); actualizarTotal(); };
+  $('#emNinguno').onclick = () => { $$('#emPersonas label:not(.hidden) input').forEach(c => c.checked = false); actualizarTotal(); };
+  actualizarTotal();
+
+  $('#emBtn').onclick = async () => {
+    const g = grupoSel();
+    if (!g) return toast('Elegí un grupo.', true);
+    const n = total();
+    if (!n) return toast('No hay vouchers para emitir.', true);
+    if (!await confirmar('Emitir vouchers', `Se van a emitir e imprimir ${n} voucher(s) de ${nomTipo($('#emTipo').value)} para ${g.nombre}. ¿Continuar?`, 'Emitir e imprimir')) return;
+    const r = await intentar(api('emitirLote', {
+      grupoId: g.grupoId, tipoId: $('#emTipo').value, fechaDesde: $('#emDesde').value, fechaHasta: $('#emHasta').value,
+      cantidad: $('#emCant').value, personaIds: $$('#emPersonas input:checked').map(c => c.value), observaciones: $('#emObs').value
+    }));
+    toast(`Lote ${r.loteId} emitido (${r.cantidad} vouchers).`);
+    imprimirTickets(r.tickets);
+  };
+};
+
+/* ===================== Lotes ===================== */
+RENDER.lotes = async (main) => {
+  main.innerHTML = `<div class="card"><h2>Lotes emitidos</h2>
+    <div class="row">
+      <div class="field"><label>Creados desde</label><input id="loDesde" type="date" value="${sumarDias(hoyISO(), -7)}"></div>
+      <div class="field"><label>Hasta</label><input id="loHasta" type="date" value="${hoyISO()}"></div>
+      <div class="field"><label>Grupo</label><select id="loGrupo">${opciones(APP.grupos, 'grupoId', '', 'Todos')}</select></div>
+      <div class="field" style="flex:0"><button class="btn" id="loBuscar" type="button">Buscar</button></div>
+    </div><div id="loLista"></div></div><div id="loDetalle"></div>`;
+  const buscar = async () => {
+    const lotes = await intentar(api('listarLotes', { desde: $('#loDesde').value, hasta: $('#loHasta').value, grupoId: $('#loGrupo').value }));
+    $('#loLista').innerHTML = lotes.length ? `<div class="table-wrap"><table><thead><tr><th>Lote</th><th>Creado</th><th>Grupo</th><th>Tipo</th><th>Validez</th><th class="num">Cant.</th><th></th></tr></thead><tbody>
+      ${lotes.map(l => `<tr><td>${esc(l.loteId)}</td><td>${esc(fechaLeg(l.creadoEn))}<div class="muted">${esc(l.creadoPor)}</div></td><td>${esc(nomGrupo(l.grupoId))}</td>
+        <td>${esc(nomTipo(l.tipoId))}</td><td>${esc(fechaLeg(l.fechaDesde))}${l.fechaHasta !== l.fechaDesde ? ' → ' + esc(fechaLeg(l.fechaHasta)) : ''}</td>
+        <td class="num">${esc(l.cantidad)}</td><td><button class="btn sec small" data-lote="${esc(l.loteId)}" type="button">Ver</button></td></tr>`).join('')}
+      </tbody></table></div>` : '<p class="muted">No hay lotes en el período.</p>';
+    $$('#loLista [data-lote]').forEach(b => b.onclick = () => verLote(b.dataset.lote));
+  };
+  $('#loBuscar').onclick = buscar;
+  await buscar();
+};
+
+async function verLote(loteId) {
+  const d = await intentar(api('detalleLote', loteId));
+  const cont = $('#loDetalle');
+  cont.innerHTML = `<div class="card"><h2>Lote ${esc(loteId)}</h2>
+    <p class="muted">${esc(nomGrupo(d.lote.grupoId))} · ${esc(nomTipo(d.lote.tipoId))} · ${esc(d.lote.observaciones || '')}</p>
+    <p>${LISTA_ESTADOS.filter(e => d.conteo[e]).map(e => badge(e) + ' ' + d.conteo[e]).join(' &nbsp; ')}</p>
+    <div class="row" style="margin-bottom:10px">
+      <button class="btn" id="ldEntregar" type="button">Entregar</button>
+      <button class="btn sec" id="ldReimp" type="button">Reimprimir</button>
+      <button class="btn danger" id="ldAnular" type="button">Anular</button>
+      <span class="muted">Si no seleccionás ninguno, la acción aplica a todos los vouchers pendientes del lote.</span>
+    </div>
+    <div class="table-wrap"><table><thead><tr><th><input type="checkbox" id="ldTodos"></th><th>Código</th><th>Persona</th><th>Fecha</th><th>Estado</th><th>Detalle</th></tr></thead><tbody>
+    ${d.vouchers.map(v => `<tr><td><input type="checkbox" class="ldSel" value="${esc(v.voucherId)}"></td><td>${esc(v.codigo)}</td><td>${esc(v.personaNombre || '—')}</td>
+      <td>${esc(fechaLeg(v.fechaValidez))}</td><td>${badge(v.estado)}</td>
+      <td class="muted">${v.entregadoA ? 'Recibió: ' + esc(v.entregadoA) + '<br>' : ''}${v.usadoEn ? 'Usado ' + esc(fechaLeg(v.usadoEn)) + ' en ' + esc(nomComedor(v.comedorUso)) : ''}${Number(v.reimpresiones) ? '<br>Reimpreso ' + esc(v.reimpresiones) + 'x' : ''}</td></tr>`).join('')}
+    </tbody></table></div></div>`;
+  cont.scrollIntoView({ behavior: 'smooth' });
+  const sel = () => $$('.ldSel:checked').map(c => c.value);
+  $('#ldTodos').onchange = (e) => $$('.ldSel').forEach(c => c.checked = e.target.checked);
+  $('#ldEntregar').onclick = async () => {
+    const r = await modal('Entregar vouchers', `<p>${sel().length ? sel().length + ' seleccionados' : 'Todos los pendientes del lote'}.</p>
+      <div class="field"><label>Recibe (nombre del responsable)</label><input name="recibe"></div>`,
+      [{ id: 'no', label: 'Cancelar', cls: 'sec' }, { id: 'si', label: 'Registrar entrega' }]);
+    if (r.boton !== 'si') return;
+    const res = await intentar(api('entregarLote', loteId, r.datos.recibe, sel()));
+    toast(`Entregados: ${res.entregados}` + (res.errores.length ? ` · ${res.errores.length} no aplicables` : ''));
+    verLote(loteId);
+  };
+  $('#ldReimp').onclick = async () => {
+    const t = await intentar(api('reimprimir', { loteId, voucherIds: sel() }));
+    imprimirTickets(t);
+    verLote(loteId);
+  };
+  $('#ldAnular').onclick = async () => {
+    const motivo = await pedirTexto('Anular vouchers', `Motivo de anulación (${sel().length ? sel().length + ' seleccionados' : 'todos los pendientes del lote'})`, 'Anular', 'danger');
+    if (motivo === null) return;
+    const res = await intentar(api('anularLote', loteId, motivo, sel()));
+    toast(`Anulados: ${res.anulados}` + (res.errores.length ? ` · ${res.errores.length} no aplicables` : ''));
+    verLote(loteId);
+  };
+}
+
+/* ===================== Entregar por escaneo ===================== */
+RENDER.entregar = async (main) => {
+  main.innerHTML = `<div class="card"><h2>Entregar vouchers escaneando</h2>
+    <div class="field"><label>Recibe (persona o responsable)</label><input id="enRecibe"></div>
+    <div class="row"><div class="field"><label>Código manual</label><input id="enCodigo" placeholder="V0000001-ABCD1234"></div>
+      <div class="field" style="flex:0"><button class="btn sec" id="enManual" type="button">Entregar</button></div></div>
+    <button class="btn big" id="enScan" type="button">Activar cámara</button>
+    <div id="enLector" class="scanner" style="margin-top:12px"></div>
+    <div class="contador" id="enCont"></div></div>
+    <div class="card"><h3>Entregados en esta sesión</h3><div id="enLog" class="muted">—</div></div>`;
+  let n = 0;
+  const log = [];
+  const procesar = async (txt) => {
+    const recibe = $('#enRecibe').value.trim();
+    if (!recibe) { beep(false); return toast('Indicá quién recibe antes de escanear.', true); }
+    try {
+      const r = await api('entregarCodigo', extraerCodigo(txt), recibe);
+      beep(r.ok);
+      if (r.ok) n++;
+      log.unshift(`${r.ok ? '✔' : '✖'} ${r.voucher.codigo} · ${r.voucher.tipo} ${r.voucher.fecha} ${r.voucher.persona ? '· ' + r.voucher.persona : ''} — ${r.mensaje}`);
+      toast(r.mensaje, !r.ok);
+    } catch (e) { beep(false); log.unshift('✖ ' + txt + ' — ' + e.message); toast(e.message, true); }
+    $('#enCont').textContent = `Entregados: ${n}`;
+    $('#enLog').innerHTML = log.slice(0, 50).map(esc).join('<br>');
+  };
+  $('#enManual').onclick = () => { const c = $('#enCodigo').value; $('#enCodigo').value = ''; if (c) procesar(c); };
+  $('#enScan').onclick = async () => {
+    try { await Scanner.iniciar('enLector', procesar); $('#enScan').classList.add('hidden'); }
+    catch (e) { toast('No se pudo abrir la cámara: ' + (e.message || e), true); }
+  };
+};
+
+/* ===================== Canje ===================== */
+RENDER.canje = async (main) => {
+  const esComedor = APP.user.rol === 'COMEDOR';
+  const comedorGuardado = store.get('vt_comedor') || '';
+  main.innerHTML = `<div class="card"><h2>Canje de vouchers</h2>
+    ${esComedor ? `<p><b>Comedor:</b> ${esc(nomComedor(APP.user.comedorId))}</p>` :
+      `<div class="field"><label>Comedor desde el que canjeás</label><select id="caComedor">${opciones(APP.comedores.filter(activo), 'comedorId', comedorGuardado, 'Elegí…')}</select></div>`}
+    <div id="caPendiente"></div>
+    <button class="btn big" id="caScan" type="button">Activar cámara</button>
+    <div id="caLector" class="scanner" style="margin-top:12px"></div>
+    <div class="contador" id="caCont">Canjes en esta sesión: 0</div>
+    <div class="row" style="margin-top:12px"><div class="field"><label>Código manual</label><input id="caCodigo" placeholder="V0000001-ABCD1234" autocapitalize="characters"></div>
+      <div class="field" style="flex:0"><button class="btn sec" id="caManual" type="button">Canjear</button></div></div>
+  </div>
+  <div class="card"><h3>Últimos escaneos</h3><div id="caLog" class="muted">—</div></div>
+  <div id="caResultado" class="resultado hidden"></div>`;
+
+  let n = 0;
+  const log = [];
+  const comedorId = () => esComedor ? APP.user.comedorId : $('#caComedor').value;
+  if (!esComedor) $('#caComedor').onchange = () => store.set('vt_comedor', $('#caComedor').value);
+
+  const mostrar = (r) => {
+    const el = $('#caResultado');
+    const v = r.voucher;
+    el.className = 'resultado ' + (r.ok ? 'ok' : 'bad');
+    el.innerHTML = `<div class="icono">${r.ok ? '✔' : '✖'}</div><div class="msg">${esc(r.mensaje)}</div>
+      ${v ? `<div class="det">${esc(v.tipo)} · ${esc(v.fecha)}<br>${v.persona ? '<b>' + esc(v.persona) + '</b><br>' : ''}${esc(v.grupo)}<br><small>${esc(v.codigo)}</small></div>` : ''}
+      <p style="margin-top:24px;opacity:.8">Tocá para continuar</p>`;
+    beep(r.ok);
+    const cerrar = () => el.classList.add('hidden');
+    el.onclick = cerrar;
+    clearTimeout(mostrar.t);
+    mostrar.t = setTimeout(cerrar, r.ok ? 2500 : 5000);
+    log.unshift(`${r.ok ? '✔' : '✖'} ${new Date().toLocaleTimeString().substring(0, 5)} · ${v ? v.codigo + ' · ' + v.tipo + (v.persona ? ' · ' + v.persona : '') : ''} — ${r.mensaje}`);
+    $('#caLog').innerHTML = log.slice(0, 30).map(esc).join('<br>');
+  };
+
+  const procesar = async (txt) => {
+    if (!comedorId()) { beep(false); return toast('Elegí el comedor.', true); }
+    try {
+      const r = await api('canjear', extraerCodigo(txt), comedorId());
+      if (r.ok) { n++; $('#caCont').textContent = `Canjes en esta sesión: ${n}`; }
+      mostrar(r);
+    } catch (e) { mostrar({ ok: false, mensaje: e.message }); }
+  };
+
+  $('#caManual').onclick = () => { const c = $('#caCodigo').value; $('#caCodigo').value = ''; if (c) procesar(c); };
+  $('#caCodigo').onkeydown = (e) => { if (e.key === 'Enter') $('#caManual').click(); };
+  $('#caScan').onclick = async () => {
+    if (!comedorId()) return toast('Elegí el comedor.', true);
+    try { await Scanner.iniciar('caLector', procesar); $('#caScan').classList.add('hidden'); }
+    catch (e) { toast('No se pudo abrir la cámara: ' + (e.message || e) + '. Usá el ingreso manual o abrí la app desde el link de GitHub Pages.', true); }
+  };
+
+  // Flujo "QR leído con la cámara nativa": la URL trae el código; se valida y se pide confirmación.
+  if (BOOT.code) {
+    const codigo = BOOT.code; BOOT.code = '';
+    const pend = $('#caPendiente');
+    const validar = async () => {
+      if (!comedorId()) { pend.innerHTML = '<p class="muted">Elegí el comedor para validar el voucher escaneado.</p>'; return; }
+      const r = await intentar(api('validarCanje', codigo, comedorId()));
+      const v = r.voucher;
+      pend.innerHTML = `<div class="card" style="border-color:${r.ok ? 'var(--ok)' : 'var(--bad)'}">
+        <h3 style="color:${r.ok ? 'var(--ok)' : 'var(--bad)'}">${esc(r.mensaje)}</h3>
+        ${v ? `<p>${esc(v.tipo)} · ${esc(v.fecha)} · ${esc(v.franja)}<br>${v.persona ? '<b>' + esc(v.persona) + '</b> · ' : ''}${esc(v.grupo)}<br><small>${esc(v.codigo)}</small></p>` : ''}
+        ${r.ok ? '<button class="btn big" id="caConfirmar" type="button">Confirmar canje</button>' : ''}</div>`;
+      if (r.ok) $('#caConfirmar').onclick = async () => { pend.innerHTML = ''; await procesar(codigo); };
+    };
+    if (!esComedor) $('#caComedor').addEventListener('change', validar);
+    validar();
+  }
+};
+
+/* ===================== Buscar / Anular ===================== */
+RENDER.buscar = async (main) => {
+  main.innerHTML = `<div class="card"><h2>Buscar voucher</h2>
+    <div class="row"><div class="field"><label>Código</label><input id="buCodigo" placeholder="V0000001-ABCD1234 o V0000001" autocapitalize="characters"></div>
+      <div class="field" style="flex:0"><button class="btn" id="buBtn" type="button">Buscar</button></div>
+      <div class="field" style="flex:0"><button class="btn sec" id="buScan" type="button">Escanear</button></div></div>
+    <div id="buLector" class="scanner"></div></div><div id="buRes"></div>`;
+  const buscar = async (codigo) => {
+    codigo = extraerCodigo(codigo);
+    if (!codigo) return;
+    await Scanner.detener();
+    const r = await intentar(api('buscarVoucher', codigo));
+    const v = r.voucher;
+    const pendiente = v.estado === 'IMPRESO' || v.estado === 'ENTREGADO';
+    const fila = (l, val) => val ? `<tr><th style="width:35%">${esc(l)}</th><td>${esc(val)}</td></tr>` : '';
+    $('#buRes').innerHTML = `<div class="card"><h2>${esc(v.codigo)} ${badge(v.estado)}</h2>
+      <table>${fila('Lote', v.loteId)}${fila('Grupo', v.grupoNombre)}${fila('Persona', v.personaNombre)}${fila('Tipo', v.tipoNombre)}
+      ${fila('Fecha válida', fechaLeg(v.fechaValidez) + ' · ' + v.franjaDesde + ' a ' + v.franjaHasta)}${fila('Comedores válidos', v.comedoresNombres)}
+      ${fila('Impreso', fechaLeg(v.impresoEn) + ' por ' + v.impresoPor + (Number(v.reimpresiones) ? ' · reimpreso ' + v.reimpresiones + 'x' : ''))}
+      ${fila('Entregado', v.entregadoEn ? fechaLeg(v.entregadoEn) + ' por ' + v.entregadoPor + ' a ' + v.entregadoA : '')}
+      ${fila('Usado', v.usadoEn ? fechaLeg(v.usadoEn) + ' en ' + v.comedorUsoNombre + ' (' + v.usadoPor + ')' : '')}
+      ${fila('Anulado', v.anuladoEn ? fechaLeg(v.anuladoEn) + ' por ' + v.anuladoPor + ' — ' + v.motivoAnulacion : '')}
+      ${fila('Vencido', fechaLeg(v.vencidoEn))}</table>
+      ${pendiente ? `<div class="row" style="margin-top:12px">
+        ${v.estado === 'IMPRESO' ? '<button class="btn" id="buEntregar" type="button">Entregar</button>' : ''}
+        <button class="btn sec" id="buReimp" type="button">Reimprimir</button>
+        <button class="btn danger" id="buAnular" type="button">Anular</button></div>` : ''}
+      <h3 style="margin-top:16px">Historial</h3>
+      ${tablaHtml({ headers: ['Fecha', 'Acción', 'Estado', 'Usuario', 'Comedor', 'Detalle'],
+        rows: r.movimientos.map(m => [fechaLeg(m.timestamp), m.accion, (m.estadoAnterior ? m.estadoAnterior + ' → ' : '') + m.estadoNuevo, m.usuario, nomComedor(m.comedorId), m.detalle]) })}</div>`;
+    if (!pendiente) return;
+    if ($('#buEntregar')) $('#buEntregar').onclick = async () => {
+      const recibe = await pedirTexto('Entregar voucher', 'Recibe', 'Entregar');
+      if (!recibe) return;
+      const res = await intentar(api('entregarCodigo', v.codigo, recibe));
+      toast(res.mensaje, !res.ok); buscar(v.codigo);
+    };
+    $('#buReimp').onclick = async () => { imprimirTickets(await intentar(api('reimprimir', { codigos: [v.codigo] }))); buscar(v.codigo); };
+    $('#buAnular').onclick = async () => {
+      const motivo = await pedirTexto('Anular voucher ' + v.codigo, 'Motivo de anulación', 'Anular', 'danger');
+      if (motivo === null) return;
+      const res = await intentar(api('anularVouchers', [v.codigo], motivo));
+      toast(res.anulados ? 'Voucher anulado.' : res.errores.join(' '), !res.anulados); buscar(v.codigo);
+    };
+  };
+  $('#buBtn').onclick = () => buscar($('#buCodigo').value);
+  $('#buCodigo').onkeydown = (e) => { if (e.key === 'Enter') buscar($('#buCodigo').value); };
+  $('#buScan').onclick = async () => {
+    try { await Scanner.iniciar('buLector', async (txt) => { $('#buCodigo').value = extraerCodigo(txt); await buscar(txt); }); }
+    catch (e) { toast('No se pudo abrir la cámara: ' + (e.message || e), true); }
+  };
+};
+
+/* ===================== Reportes ===================== */
+RENDER.reportes = async (main) => {
+  const hoy = hoyISO();
+  const primero = hoy.substring(0, 8) + '01';
+  main.innerHTML = `<div class="card"><h2>Reportes</h2>
+    <div class="tabs" id="reTabs"><button data-r="estado" class="active" type="button">Por estado</button>
+      <button data-r="grupo" type="button">Consumo por grupo</button><button data-r="liq" type="button">Liquidación por comedor</button></div>
+    <div class="grid">
+      <div class="field"><label>Fecha de validez desde</label><input id="reDesde" type="date" value="${primero}"></div>
+      <div class="field"><label>Hasta</label><input id="reHasta" type="date" value="${hoy}"></div>
+      <div class="field"><label>Grupo</label><select id="reGrupo">${opciones(APP.grupos, 'grupoId', '', 'Todos')}</select></div>
+      <div class="field"><label>Comedor</label><select id="reComedor">${opciones(APP.comedores, 'comedorId', '', 'Todos')}</select></div>
+      <div class="field"><label>Tipo</label><select id="reTipo">${opciones(APP.tipos, 'tipoId', '', 'Todos')}</select></div>
+    </div>
+    <div class="row"><button class="btn" id="reBtn" type="button">Generar</button></div></div>
+    <div id="reRes"></div>`;
+  let tipo = 'estado';
+  let tablas = [];
+  $$('#reTabs button').forEach(b => b.onclick = () => {
+    $$('#reTabs button').forEach(x => x.classList.toggle('active', x === b));
+    tipo = b.dataset.r; $('#reRes').innerHTML = '';
+  });
+  const filtro = () => ({ desde: $('#reDesde').value, hasta: $('#reHasta').value, grupoId: $('#reGrupo').value, comedorId: $('#reComedor').value, tipoId: $('#reTipo').value });
+  const bloque = (titulo, t, i) => `<div class="card"><div class="row" style="justify-content:space-between"><h3>${esc(titulo)}</h3>
+    ${t.rows.length ? `<button class="btn sec small" data-volcar="${i}" type="button">Volcar a hoja</button>` : ''}</div>${tablaHtml(t)}</div>`;
+  $('#reBtn').onclick = async () => {
+    const f = filtro();
+    const periodo = ` (${fechaLeg(f.desde)} – ${fechaLeg(f.hasta)})`;
+    let html = '';
+    if (tipo === 'estado') {
+      const r = await intentar(api('reporteDashboard', f));
+      tablas = [['Estados por tipo' + periodo, r.porTipo], ['Estados por fecha' + periodo, r.porFecha]];
+      html = kpisHtml(r.totales) + '<div style="height:16px"></div>';
+    } else if (tipo === 'grupo') {
+      const r = await intentar(api('reporteConsumoGrupo', f));
+      tablas = [['Consumo por grupo' + periodo, r.grupos], ['Consumo por persona (nominativos)' + periodo, r.personas]];
+    } else {
+      const r = await intentar(api('reporteLiquidacion', f));
+      tablas = [['Liquidación por comedor (vouchers usados)' + periodo, r]];
+    }
+    $('#reRes').innerHTML = html + tablas.map(([t, tb], i) => bloque(t, tb, i)).join('');
+    $$('#reRes [data-volcar]').forEach(b => b.onclick = async () => {
+      const [t, tb] = tablas[Number(b.dataset.volcar)];
+      const url = await intentar(api('volcarReporte', t, tb));
+      await modal('Reporte volcado', `<p>Se escribió en la hoja "Reporte".</p><p><a href="${esc(url)}" target="_blank">Abrir planilla</a></p>`);
+    });
+  };
+};
+</script>
+
+  <script>
+/* ===================== Formularios genéricos ===================== */
+/**
+ * campos: [{ name, label, type: 'text'|'time'|'select'|'multi'|'bool'|'password', options: [{v, l}] }]
+ */
+function formHtml(campos, valores) {
+  valores = valores || {};
+  return campos.map(c => {
+    const v = valores[c.name] == null ? (c.def != null ? c.def : '') : valores[c.name];
+    if (c.type === 'bool') {
+      return `<div class="field"><label style="display:flex;gap:8px;align-items:center;color:var(--text)">
+        <input type="checkbox" name="${c.name}" ${String(v).toUpperCase() === 'TRUE' ? 'checked' : ''}> ${esc(c.label)}</label></div>`;
+    }
+    if (c.type === 'select') {
+      return `<div class="field"><label>${esc(c.label)}</label><select name="${c.name}">${c.options.map(o =>
+        `<option value="${esc(o.v)}" ${o.v === v ? 'selected' : ''}>${esc(o.l)}</option>`).join('')}</select></div>`;
+    }
+    if (c.type === 'multi') {
+      const sel = String(v).split(',');
+      return `<div class="field"><label>${esc(c.label)}</label><div class="lista-personas">${c.options.map(o =>
+        `<label><input type="checkbox" data-multi="${c.name}" value="${esc(o.v)}" ${sel.indexOf(o.v) >= 0 ? 'checked' : ''}> ${esc(o.l)}</label>`).join('')}
+        </div><input type="hidden" name="${c.name}"></div>`;
+    }
+    if (c.type === 'range') {
+      return `<div class="field"><label>${esc(c.label)}: <b data-range-val="${c.name}">${esc(v)}%</b></label>
+        <input name="${c.name}" type="range" min="${c.min}" max="${c.max}" step="1" value="${esc(v)}"></div>`;
+    }
+    return `<div class="field"><label>${esc(c.label)}</label><input name="${c.name}" type="${c.type || 'text'}" value="${esc(v)}" ${c.readonly ? 'readonly' : ''}></div>`;
+  }).join('');
+}
+
+/** Abre un modal con el formulario; devuelve los datos o null. */
+async function editarEnModal(titulo, campos, valores) {
+  const p = modal(titulo, formHtml(campos, valores), [{ id: 'no', label: 'Cancelar', cls: 'sec' }, { id: 'si', label: 'Guardar' }]);
+  // Sincroniza multiselecciones con su input oculto antes de cerrar
+  const root = $('#modalRoot');
+  const sync = () => campos.filter(c => c.type === 'multi').forEach(c => {
+    $(`[name="${c.name}"]`, root).value = $$(`[data-multi="${c.name}"]:checked`, root).map(x => x.value).join(',');
+  });
+  sync();
+  root.firstElementChild.addEventListener('change', sync);
+  const r = await p;
+  if (r.boton !== 'si') return null;
+  campos.filter(c => c.type === 'bool').forEach(c => r.datos[c.name] = r.datos[c.name] ? 'TRUE' : 'FALSE');
+  return r.datos;
+}
+
+/* ===================== Catálogos ===================== */
+const DEF_CATALOGOS = {
+  comedores: {
+    titulo: 'Comedores', id: 'comedorId', solo: 'ADMIN',
+    columnas: [['nombre', 'Nombre']],
+    campos: () => [{ name: 'nombre', label: 'Nombre' }, { name: 'activo', label: 'Activo', type: 'bool', def: 'TRUE' }]
+  },
+  tipos: {
+    titulo: 'Tipos de comida', id: 'tipoId', solo: 'ADMIN',
+    columnas: [['nombre', 'Nombre'], ['horaDesde', 'Desde'], ['horaHasta', 'Hasta']],
+    campos: () => [{ name: 'nombre', label: 'Nombre' }, { name: 'horaDesde', label: 'Hora desde', type: 'time' },
+      { name: 'horaHasta', label: 'Hora hasta', type: 'time' }, { name: 'activo', label: 'Activo', type: 'bool', def: 'TRUE' }]
+  },
+  grupos: {
+    titulo: 'Grupos', id: 'grupoId', solo: 'ADMIN',
+    columnas: [['nombre', 'Nombre'], ['modalidad', 'Modalidad'], ['responsable', 'Responsable'], ['comedoresIds', 'Comedores', ids => String(ids).split(',').map(nomComedor).join(', ')]],
+    campos: () => [{ name: 'nombre', label: 'Nombre' },
+      { name: 'modalidad', label: 'Modalidad', type: 'select', options: [{ v: 'NOMINATIVO', l: 'Nominativo (a nombre de cada persona)' }, { v: 'PORTADOR', l: 'Al portador' }] },
+      { name: 'responsable', label: 'Responsable' }, { name: 'contacto', label: 'Contacto (teléfono / email)' },
+      { name: 'comedoresIds', label: 'Comedores donde vale', type: 'multi', options: APP.comedores.filter(activo).map(c => ({ v: c.comedorId, l: c.nombre })) },
+      { name: 'activo', label: 'Activo', type: 'bool', def: 'TRUE' }]
+  },
+  personas: {
+    titulo: 'Personas', id: 'personaId',
+    columnas: [['nombre', 'Nombre'], ['documento', 'Documento']],
+    campos: () => [{ name: 'nombre', label: 'Nombre y apellido' }, { name: 'documento', label: 'Documento' }, { name: 'activo', label: 'Activo', type: 'bool', def: 'TRUE' }]
+  }
+};
+
+RENDER.catalogos = async (main) => {
+  const disponibles = Object.keys(DEF_CATALOGOS).filter(k => !DEF_CATALOGOS[k].solo || DEF_CATALOGOS[k].solo === APP.user.rol);
+  main.innerHTML = `<div class="tabs" id="caTabs">${disponibles.map((k, i) =>
+    `<button data-cat="${k}" class="${i === 0 ? 'active' : ''}" type="button">${esc(DEF_CATALOGOS[k].titulo)}</button>`).join('')}</div><div id="catCont"></div>`;
+  $$('#caTabs button').forEach(b => b.onclick = () => {
+    $$('#caTabs button').forEach(x => x.classList.toggle('active', x === b));
+    mostrarCatalogo(b.dataset.cat);
+  });
+  mostrarCatalogo(disponibles[0]);
+};
+
+async function mostrarCatalogo(nombre, grupoId) {
+  const def = DEF_CATALOGOS[nombre];
+  const cont = $('#catCont');
+  const esPersonas = nombre === 'personas';
+  if (esPersonas && !grupoId) grupoId = (APP.grupos.find(g => g.modalidad === 'NOMINATIVO' && activo(g)) || {}).grupoId || '';
+  const lista = esPersonas && !grupoId ? [] : await intentar(api('listarCatalogo', nombre, esPersonas ? { grupoId } : null));
+  cont.innerHTML = `<div class="card"><div class="row" style="justify-content:space-between;align-items:center">
+      <h2>${esc(def.titulo)}</h2><button class="btn" id="catNuevo" type="button">+ Nuevo</button></div>
+    ${esPersonas ? `<div class="row"><div class="field"><label>Grupo</label><select id="catGrupo">${opciones(APP.grupos, 'grupoId', grupoId, 'Elegí…')}</select></div>
+      <div class="field" style="flex:0"><button class="btn sec" id="catImportar" type="button">Importar lista</button></div>
+      ${APP.user.rol === 'ADMIN' ? '<div class="field" style="flex:0"><button class="btn sec" id="catImportarHoja" type="button">Importar desde hoja</button></div>' : ''}</div>` : ''}
+    <div class="table-wrap"><table><thead><tr>${def.columnas.map(c => `<th>${esc(c[1])}</th>`).join('')}<th>Estado</th><th></th></tr></thead><tbody>
+    ${lista.map(o => `<tr>${def.columnas.map(c => `<td>${esc(c[2] ? c[2](o[c[0]]) : o[c[0]])}</td>`).join('')}
+      <td>${activo(o) ? 'Activo' : '<span class="muted">Inactivo</span>'}</td>
+      <td><button class="btn sec small" data-edit="${esc(o[def.id])}" type="button">Editar</button></td></tr>`).join('') ||
+      `<tr><td colspan="${def.columnas.length + 2}" class="muted">Sin registros.</td></tr>`}
+    </tbody></table></div></div>`;
+
+  const guardar = async (valores, titulo) => {
+    const datos = await editarEnModal(titulo, def.campos(), valores);
+    if (!datos) return;
+    if (valores && valores[def.id]) datos[def.id] = valores[def.id];
+    if (esPersonas) datos.grupoId = grupoId;
+    await intentar(api('guardarCatalogo', nombre, datos));
+    toast('Guardado.');
+    if (!esPersonas) await recargarDatos();
+    mostrarCatalogo(nombre, grupoId);
+  };
+  $('#catNuevo').onclick = () => {
+    if (esPersonas && !grupoId) return toast('Elegí un grupo.', true);
+    guardar(null, 'Nuevo: ' + def.titulo);
+  };
+  $$('#catCont [data-edit]').forEach(b => b.onclick = () => guardar(lista.find(o => o[def.id] === b.dataset.edit), 'Editar'));
+  if (esPersonas) {
+    $('#catGrupo').onchange = () => mostrarCatalogo('personas', $('#catGrupo').value);
+    $('#catImportar').onclick = async () => {
+      if (!grupoId) return toast('Elegí un grupo.', true);
+      const texto = await pedirTexto('Importar personas a ' + nomGrupo(grupoId), 'Una persona por línea: Nombre;Documento (también sirve pegar dos columnas desde una planilla)', 'Importar');
+      if (!texto) return;
+      const r = await intentar(api('importarPersonasTexto', grupoId, texto));
+      await modal('Importación', `<p>Importadas: <b>${r.importadas}</b><br>Duplicadas (omitidas): ${r.duplicadas}</p>${r.errores.length ? '<p class="muted">' + r.errores.map(esc).join('<br>') + '</p>' : ''}`);
+      mostrarCatalogo('personas', grupoId);
+    };
+    if ($('#catImportarHoja')) $('#catImportarHoja').onclick = async () => {
+      if (!await confirmar('Importar desde hoja', 'Se importarán las filas de la hoja "ImportarPersonas" (columnas: grupoId o nombre del grupo, nombre, documento) y la hoja se vaciará.', 'Importar')) return;
+      const r = await intentar(api('importarPersonasDesdeHoja'));
+      await modal('Importación', `<p>Importadas: <b>${r.importadas}</b><br>Duplicadas (omitidas): ${r.duplicadas}</p>${r.errores.length ? '<p class="muted">' + r.errores.map(esc).join('<br>') + '<br>Las filas con error quedaron en la hoja.</p>' : ''}`);
+      mostrarCatalogo('personas', grupoId);
+    };
+  }
+}
+
+/* ===================== Usuarios ===================== */
+RENDER.usuarios = async (main) => {
+  const lista = await intentar(api('listarUsuarios'));
+  main.innerHTML = `<div class="card"><div class="row" style="justify-content:space-between;align-items:center"><h2>Usuarios</h2>
+    <button class="btn" id="usNuevo" type="button">+ Nuevo</button></div>
+    <div class="table-wrap"><table><thead><tr><th>Usuario</th><th>Nombre</th><th>Rol</th><th>Comedor</th><th>Estado</th><th></th></tr></thead><tbody>
+    ${lista.map(u => `<tr><td>${esc(u.usuario)}</td><td>${esc(u.nombre)}</td><td>${esc(u.rol)}</td><td>${esc(nomComedor(u.comedorId))}</td>
+      <td>${activo(u) ? 'Activo' : '<span class="muted">Inactivo</span>'}</td><td><button class="btn sec small" data-u="${esc(u.usuario)}" type="button">Editar</button></td></tr>`).join('')}
+    </tbody></table></div>
+    <p class="muted">Roles: ADMIN (todo), OPERADOR (emite, entrega, anula, reportes, personas), COMEDOR (solo canje en su comedor).</p></div>`;
+  const campos = (nuevo) => [
+    { name: 'usuario', label: 'Usuario', readonly: !nuevo }, { name: 'nombre', label: 'Nombre' },
+    { name: 'rol', label: 'Rol', type: 'select', options: ['OPERADOR', 'COMEDOR', 'ADMIN'].map(r => ({ v: r, l: r })) },
+    { name: 'comedorId', label: 'Comedor (solo rol COMEDOR)', type: 'select', options: [{ v: '', l: '—' }].concat(APP.comedores.filter(activo).map(c => ({ v: c.comedorId, l: c.nombre }))) },
+    { name: 'pin', label: nuevo ? 'PIN' : 'Nuevo PIN (dejar vacío para no cambiar)', type: 'password' },
+    { name: 'activo', label: 'Activo', type: 'bool', def: 'TRUE' }];
+  const editar = async (u) => {
+    const datos = await editarEnModal(u ? 'Editar usuario' : 'Nuevo usuario', campos(!u), u);
+    if (!datos) return;
+    await intentar(api('guardarUsuario', datos, !u));
+    toast('Usuario guardado.');
+    RENDER.usuarios(main);
+  };
+  $('#usNuevo').onclick = () => editar(null);
+  $$('[data-u]', main).forEach(b => b.onclick = () => editar(lista.find(u => u.usuario === b.dataset.u)));
+};
+
+/* ===================== Configuración ===================== */
+RENDER.config = async (main) => {
+  const c = await intentar(api('obtenerConfig'));
+  const campos = [
+    { name: 'ORG_NOMBRE', label: 'Nombre de la organización' },
+    { name: 'LOGO_URL', label: 'URL del logo (imagen pública, idealmente en blanco y negro)' },
+    { name: 'LOGO_ESCALA', label: 'Tamaño del logo (% del ancho del ticket, 0 = sin logo)', type: 'range', min: 0, max: 100, def: '60' },
+    { name: 'TICKET_PIE', label: 'Texto al pie del ticket' },
+    { name: 'ANCHO_TICKET', label: 'Ancho del papel', type: 'select', options: [{ v: '80', l: '80 mm' }, { v: '58', l: '58 mm' }] },
+    { name: 'REQUIERE_ENTREGA_PARA_CANJE', label: 'Exigir que el voucher esté ENTREGADO para poder canjearlo', type: 'bool' },
+    { name: 'TZ', label: 'Zona horaria' },
+    { name: 'ARCHIVO_DIAS', label: 'Archivar vouchers finalizados con más de N días', type: 'number' },
+    { name: 'ARCHIVO_SPREADSHEET_ID', label: 'ID de planilla de archivo (vacío = se crea sola)' }
+  ];
+  main.innerHTML = `<div class="card"><h2>Configuración</h2><form id="cfForm">${formHtml(campos, c)}
+    <button class="btn" type="submit">Guardar</button></form></div>
+    <div class="card"><h3>Ticket de prueba</h3><p class="muted">Vista previa con los valores del formulario (aunque no estén guardados). Imprime un ticket de ejemplo (no se registra) para ajustar la impresora.</p>
+    <div id="cfPrevia" style="background:#fff;border:1px solid #ccc;width:fit-content;max-width:100%;margin:0 auto 12px"></div>
+    <button class="btn sec" id="cfPrueba" type="button">Imprimir prueba</button></div>`;
+  const ejemplo = { codigo: 'V0000000-PRUEBA00', grupo: 'Grupo de ejemplo', persona: 'Juan Pérez', tipo: 'Almuerzo',
+    fecha: fechaLeg(hoyISO()), franja: '12:00 a 15:00', comedores: 'Comedor Central', reimpresion: false };
+  // Config del ticket tomada del formulario, para previsualizar e imprimir sin guardar.
+  const cfgForm = () => {
+    const v = n => $(`#cfForm [name="${n}"]`).value;
+    return Object.assign({}, APP.config, { orgNombre: v('ORG_NOMBRE'), logoUrl: v('LOGO_URL'), logoEscala: Number(v('LOGO_ESCALA')),
+      ticketPie: v('TICKET_PIE'), anchoTicket: Number(v('ANCHO_TICKET')) || 80 });
+  };
+  const previa = () => {
+    const cfg = cfgForm(), p = $('#cfPrevia');
+    $('[data-range-val="LOGO_ESCALA"]').textContent = cfg.logoEscala + '%';
+    p.style.setProperty('--ticket-w', (cfg.anchoTicket - 8) + 'mm');
+    p.innerHTML = ticketHtml(ejemplo, 'prev', cfg);
+    if (window.QRCode) $('#qrprev').innerHTML = qrSvg(ejemplo.codigo);
+  };
+  $('#cfForm').addEventListener('input', previa);
+  previa();
+  $('#cfForm').onsubmit = async (e) => {
+    e.preventDefault();
+    const datos = {};
+    $$('#cfForm [name]').forEach(el => datos[el.name] = el.type === 'checkbox' ? (el.checked ? 'TRUE' : 'FALSE') : el.value);
+    await intentar(api('guardarConfig', datos));
+    await recargarDatos();
+    $('#orgNombre').textContent = APP.config.orgNombre;
+    toast('Configuración guardada.');
+  };
+  $('#cfPrueba').onclick = () => imprimirTickets([ejemplo], cfgForm());
+};
+</script>
+
+</body>
+</html>
